@@ -23,7 +23,7 @@ sender.py : correction of cpu core overloaded during running or pause ([see my i
 ## FIRST LAUNCH
 before launching, you must set the gcodes directory in streamdeck\streamdeck.json
 
-"gcodespath": "/mnt/cnc/gcodes"
+"gcodespath": "YOUR GCODE DIRECTORY"
 
 ## LAUNCH
 simply as your launch bCNC.... (python -m bCNC or your other command )
