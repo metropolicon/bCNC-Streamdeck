@@ -18,7 +18,7 @@ only two original files are overwritten....
 
 __main__.py  : integration of streamdeck
 
-sender.py : correction of cpu core overloaded during running or pause ([see my issue in bCNC github](https://github.com/vlachoudis/bCNC/issues/1765)
+sender.py : correction of cpu core overloaded during running or pause ([see my issue in bCNC github](https://github.com/vlachoudis/bCNC/issues/1765))
 
 ## FIRST LAUNCH
 before launching, you must set the gcodes directory in streamdeck\streamdeck.json
