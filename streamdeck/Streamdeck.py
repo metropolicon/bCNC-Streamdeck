@@ -298,10 +298,10 @@ class StreamdeckMain(Toplevel):
       self.buttonFormat[ "homing"]={"title": "homing","command": ["homing"],"icon": "home_door.png","texte": "Initialiser\nPosition Machine","bgColor": 8,"textSize": 1,"condition": "!cnc.locked && !cnc.alarm"}
       self.buttonFormat["unlock"]={"title": "unlock","command": ["unlock"],"texte": "Unlock","icon": "lock_open.png","bgColor": 3,"condition": "cnc.locked"}
       self.buttonFormat["machinePosition"]={"title": "machinePosition","command": ["toggleUserFlag",["showAbsolutePosition"]],"texte": "Position Machine\n{{cnc.displayMpos}}","bgColor": 2,"textSize":1.2}
-      self.buttonFormat["point"]={"title": "point","command": ["input",["."]],"icon": "point.png","bgColor": 7},
+      self.buttonFormat["point"]={"title": "point","command": ["input",["."]],"icon": "point.png","bgColor": 7}
       self.buttonFormat["negative"]={"title": "negative","command": ["input",["-"]],"icon": "minus.png","bgColor": 7}
       self.buttonFormat["positive"]={"title": "positive","command": ["input",["+"]],"icon": "plus.png","bgColor": 7}
-      self.buttonFormat["numpadValue"]={"title": "numpadValue","texte": "actuelle :{{ oldvalue }}\n{{ numpadValue }}","bgColor": 8,"textSize" : 1}
+      self.buttonFormat["numpadValue"]={"title": "numpadValue","texte": "Actual :{{ oldvalue }}\n{{ numpadValue }}","bgColor": 8,"textSize" : 1}
       
       #create numeric numpad buttons   
       for x in range(10):
@@ -688,7 +688,7 @@ class NewScene(Frame):
           self.addbutton(itembutton=subitem)         
       else:  
         self.addbutton(itembutton=item)       
-          
+         
       if not self.centermessage:  
         self.startx=self.startx+self.buttonwidth+5
       if self.startx+self.buttonwidth>=self.parent.screenwidth:
@@ -705,6 +705,7 @@ class NewScene(Frame):
         item=itembutton
       except:
         if not "gcodelist" in self.SceneName.lower():
+          
           item=self.parent.buttonFormat.get(itembutton)
         else:
           item=self.parent.listfilebuttons.get(itembutton)
@@ -714,6 +715,7 @@ class NewScene(Frame):
       except:
         item=None
       if item:
+        
         xb=0
         if item.get("posx"):
           self.startx=int (item.get("posx"))
@@ -903,7 +905,7 @@ class NewScene(Frame):
         'gcode.filename':None if not self.app.gcode.filename else os.path.basename(self.app.gcode.filename),
         'cnc.MachineSize': "X:%.3f\nY:%.3f" %(float(self.parent.paramscnc["$130"]),float(self.parent.paramscnc["$131"])),
         'oldvalue' : "%s" %self.parent.oldvalue if self.parent.oldvalue else "?",
-        'numpadValue' :"( %s )\nnouvelle:%s" %(self.parent.entervalue[0].get("variable") if self.parent.entervalue[0].get("variable") else "",self.parent.entervalue[0].get("value") if self.parent.entervalue[0].get("value") else "..."),
+        'numpadValue' :"( %s )\n-->:%s" %(self.parent.entervalue[0].get("variable") if self.parent.entervalue[0].get("variable") else "",self.parent.entervalue[0].get("value") if self.parent.entervalue[0].get("value") else "..."),
         'cnc.elapsedTimeText':"...",
         'cnc.remainingTimeText':"...",
         'selectedport':"%s" %self.parent.serialPage.portCombo.get(),

@@ -88,7 +88,7 @@
                     "jogDistanceDown","jogYMinus","jogDistanceUp","jogDistanceDownZ","jogZMinus"
                 ]
             ],
-            "title":"Déplacements"
+            "title":"Move"
         },
         
         "position": {
@@ -486,13 +486,13 @@
            "title": "jogDistanceXY",
            "textSize": 1,
            "icon": "numpad.png",
-           "texte": "Distance XY\n{{ cnc.jogDistanceXY }}",
+           "texte": "STEP XY\n{{ cnc.jogDistanceXY }}",
            "textColor":"#000",
            "bgColor": "#DDDD00",
             "command": [
                 "enterStepXY",
                 [
-                    "PAS xy (mm)"
+                    "STEP xy (mm)"
                 ]
             ]
         },
@@ -500,13 +500,13 @@
             "title": "jogDistanceZ",
            "textSize": 1,
            "icon": "numpad.png",
-            "texte": "Distance Z\n{{ cnc.jogDistanceZ }}",
+            "texte": "STEP Z\n{{ cnc.jogDistanceZ }}",
             "textColor":"#000",
             "bgColor": "#DDDD00",
              "command": [
                 "enterStepZ",
                 [
-                    "PAS z (mm)"
+                    "STEP z (mm)"
                 ]
             ]
         },        
@@ -565,7 +565,7 @@
                 "jogScene"
             ],
             "icon": "move.png",
-            "texte": "Déplacements Position Machine",
+            "texte": "Move Position Machine",
             "bgColor": 5,
             "condition":"!cnc.alarm",
             "textSize": 1
@@ -754,7 +754,7 @@
                 "positionScene"
             ],
             "icon": "arrow_gps.png",
-            "texte": "Déplacements en Position Travail",
+            "texte": "Move Work Position",
             "condition":"!cnc.alarm and !cnc.running",
             "bgColor": 5
         },
@@ -767,7 +767,7 @@
                 ]
             ],
             "icon": "arrow_x.png",
-            "texte": "Saisir X",
+            "texte": "Enter X",
             "bgColor": 5
         },
         "positionYLabel": {
@@ -779,7 +779,7 @@
                 ]
             ],
             "icon": "arrow_y.png",
-            "texte": "Saisir Y",
+            "texte": "Enter Y",
             "bgColor": 4
         },
          
@@ -792,7 +792,7 @@
                 ]
             ],
             "icon": "arrow_z.png",
-            "texte": "Saisir Z",
+            "texte": "Enter Z",
             "bgColor": 6
         },
         "bcnc": {
@@ -1179,7 +1179,7 @@
                 ]
             ],
             "icon": "crosshair_x.png",
-            "texte": "Saisir",
+            "texte": "Enter",
             "bgColor": 5
         },
         "wcsYLabel": {
@@ -1191,7 +1191,7 @@
                 ]
             ],
             "icon": "crosshair_y.png",
-            "texte": "Saisir",
+            "texte": "Enter",
             "bgColor": 4
         },
         "wcsZLabel": {
@@ -1203,7 +1203,7 @@
                 ]
             ],
             "icon": "crosshair_z.png",
-            "texte": "Saisir",
+            "texte": "Enter",
             "bgColor": 6
         },
         "workPosition": {
@@ -1211,7 +1211,7 @@
             "command": [
                 "zeroScene"
             ],
-            "texte": "Position Travail\n\n{{cnc.displayWpos}}",
+            "texte": "Work position\n\n{{cnc.displayWpos}}",
             "bgColor": 5,
             "textSize":1.2,
             "condition":"!cnc.alarm"
@@ -1224,7 +1224,7 @@
                     "showAbsolutePosition"
                 ]
             ],
-            "texte": "Taille\n{{cnc.MachineSize}}",
+            "texte": "Size\n{{cnc.MachineSize}}",
             "bgColor": 5,
             "textSize":1.2
         },
@@ -1234,7 +1234,7 @@
                 "zeroScene"
             ],
             "icon": "target_edit.png",
-            "texte": "Définir position\nde travail",
+            "texte": "Set \nWork position",
             "bgColor": 5,
             "condition":"!cnc.alarm",
             "textSize": 1
@@ -1248,7 +1248,7 @@
                 ]
             ],
             "icon": "crosshair_0.png",
-            "texte": "Définir",
+            "texte": "Set",
             "bgColor": 5
         },
         "zeroY": {
@@ -1260,7 +1260,7 @@
                 ]
             ],
             "icon": "crosshair_0.png",
-            "texte": "Définir",
+            "texte": "Set",
             "bgColor": 4
         },
         "zeroZ": {
@@ -1272,7 +1272,7 @@
                 ]
             ],
             "icon": "crosshair_0.png",
-            "texte": "Définir",
+            "texte": "Set",
             "bgColor": 6
         }
     }
