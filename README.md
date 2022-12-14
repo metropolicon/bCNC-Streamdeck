@@ -12,7 +12,9 @@ This has been tested with Python 3.10, Grbl 1.1h, bCNC under Linux, Raspbian and
 
 
 ## Installation
-overwrite into bCNC directory
+[get zip file ](https://github.com/metropolicon/bCNC-Streamdeck/archive/refs/heads/main.zip) 
+
+overwrite into bCNC directory ( for exemple into : c:\Python310\Lib\site-packages\bCNC )
 
 only two original files are overwritten....
 
