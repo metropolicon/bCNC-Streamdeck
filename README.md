@@ -1,5 +1,14 @@
+# WHY ??
+
+Because bCNC interface on 7" touchscreen is not very easy to use.....
+So Big Buttons are better ;)
+
+
+
 # bCNC-Streamdeck
 Based on this excellent interface for CNCjs : [Stream Deck and mobile web pendant for cncjs](https://github.com/Billiam/cncjs-pendant-streamdeck/)
+
+
 
 ![Stream Deck device with buttons with buttons for CNC ](https://i.imgur.com/zDZwKnU.jpg%5B)
 ![Stream Deck device with buttons with buttons for CNC ](https://i.imgur.com/rtAGxuj.jpg)
