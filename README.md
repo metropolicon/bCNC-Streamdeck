@@ -12,7 +12,7 @@ This has been tested with Python 3.10, Grbl 1.1h, bCNC under Linux, Raspbian and
 
 ## MY HARDWARE
 
-CNC home made with arduino, raspberry pi 4, 7" touchscreen
+CNC home made with arduino (GRBL 1.1H), raspberry pi 4, 7" touchscreen
 
 
 ## Installation
