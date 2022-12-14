@@ -12,11 +12,12 @@ This has been tested with Python 3.10, Grbl 1.1h, bCNC under Linux, Raspbian and
 
 
 ## Installation
-
-unzip over bCNC directory
+overwrite into bCNC directory
 
 only two original files are overwritten....
+
 __main__.py  : integration of streamdeck
+
 sender.py : correction of cpu core overloaded during running or pause ([see my issue in bCNC github](https://github.com/vlachoudis/bCNC/issues/1765)
 
 ## FIRST LAUNCH
