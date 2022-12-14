@@ -10,11 +10,15 @@ Based on this excellent interface for CNCjs : [Stream Deck and mobile web pendan
 
 This has been tested with Python 3.10, Grbl 1.1h, bCNC under Linux, Raspbian and Windows 10
 
+## MY HARDWARE
+
+CNC home made with arduino, raspberry pi 4, 7" touchscreen
+
 
 ## Installation
 [get zip file ](https://github.com/metropolicon/bCNC-Streamdeck/archive/refs/heads/main.zip) 
 
-overwrite into bCNC directory ( for exemple into : c:\Python310\Lib\site-packages\bCNC )
+unzip into bCNC directory ( for exemple into : c:\Python310\Lib\site-packages\bCNC )
 
 only two original files are overwritten....
 
