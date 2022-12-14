@@ -17,7 +17,7 @@ Based on this excellent interface for CNCjs : [Stream Deck and mobile web pendan
 
 ## Compatibility
 
-This has been tested with Python 3.10, Grbl 1.1h, bCNC under Linux, Raspbian and Windows 10
+This has been tested with Python 3.10, Grbl 1.1h, bCNC under Linux, Raspbian and Windows 10 and on RaspBerry PI 3A+ and PI4
 
 ## MY HARDWARE
 
