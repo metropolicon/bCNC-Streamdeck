@@ -41,8 +41,9 @@ before launching, you must set the gcodes directory in streamdeck\streamdeck.jso
 "gcodespath": "YOUR GCODE DIRECTORY"
 
 ## LAUNCH
-simply as your launch bCNC.... (python -m bCNC or your other command )
+launch bCNC as usually .... (python -m bCNC or your other command )
 
+## DOCUMENTATION
 later, i'll can make a tutorial for options and commands....
 
 
