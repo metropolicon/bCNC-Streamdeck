@@ -298,10 +298,10 @@ class StreamdeckMain(Toplevel):
       self.buttonFormat[ "homing"]={"title": "homing","command": ["homing"],"icon": "home_door.png","texte": "Initialiser\nPosition Machine","bgColor": 8,"textSize": 1,"condition": "!cnc.locked && !cnc.alarm"}
       self.buttonFormat["unlock"]={"title": "unlock","command": ["unlock"],"texte": "Unlock","icon": "lock_open.png","bgColor": 3,"condition": "cnc.locked"}
       self.buttonFormat["machinePosition"]={"title": "machinePosition","command": ["toggleUserFlag",["showAbsolutePosition"]],"texte": "Position Machine\n{{cnc.displayMpos}}","bgColor": 2,"textSize":1.2}
-      self.buttonFormat["point"]={"title": "point","command": ["input",["."]],"icon": "point.png","bgColor": 7},
+      self.buttonFormat["point"]={"title": "point","command": ["input",["."]],"icon": "point.png","bgColor": 7}
       self.buttonFormat["negative"]={"title": "negative","command": ["input",["-"]],"icon": "minus.png","bgColor": 7}
       self.buttonFormat["positive"]={"title": "positive","command": ["input",["+"]],"icon": "plus.png","bgColor": 7}
-      self.buttonFormat["numpadValue"]={"title": "numpadValue","texte": "actuelle :{{ oldvalue }}\n{{ numpadValue }}","bgColor": 8,"textSize" : 1}
+      self.buttonFormat["numpadValue"]={"title": "numpadValue","texte": "Actual :{{ oldvalue }}\n{{ numpadValue }}","bgColor": 8,"textSize" : 1}
       
       #create numeric numpad buttons   
       for x in range(10):
@@ -688,7 +688,7 @@ class NewScene(Frame):
           self.addbutton(itembutton=subitem)         
       else:  
         self.addbutton(itembutton=item)       
-          
+         
       if not self.centermessage:  
         self.startx=self.startx+self.buttonwidth+5
       if self.startx+self.buttonwidth>=self.parent.screenwidth:
@@ -705,6 +705,7 @@ class NewScene(Frame):
         item=itembutton
       except:
         if not "gcodelist" in self.SceneName.lower():
+          
           item=self.parent.buttonFormat.get(itembutton)
         else:
           item=self.parent.listfilebuttons.get(itembutton)
@@ -714,6 +715,7 @@ class NewScene(Frame):
       except:
         item=None
       if item:
+        
         xb=0
         if item.get("posx"):
           self.startx=int (item.get("posx"))
@@ -903,7 +905,7 @@ class NewScene(Frame):
         'gcode.filename':None if not self.app.gcode.filename else os.path.basename(self.app.gcode.filename),
         'cnc.MachineSize': "X:%.3f\nY:%.3f" %(float(self.parent.paramscnc["$130"]),float(self.parent.paramscnc["$131"])),
         'oldvalue' : "%s" %self.parent.oldvalue if self.parent.oldvalue else "?",
-        'numpadValue' :"( %s )\nnouvelle:%s" %(self.parent.entervalue[0].get("variable") if self.parent.entervalue[0].get("variable") else "",self.parent.entervalue[0].get("value") if self.parent.entervalue[0].get("value") else "..."),
+        'numpadValue' :"( %s )\n-->:%s" %(self.parent.entervalue[0].get("variable") if self.parent.entervalue[0].get("variable") else "",self.parent.entervalue[0].get("value") if self.parent.entervalue[0].get("value") else "..."),
         'cnc.elapsedTimeText':"...",
         'cnc.remainingTimeText':"...",
         'selectedport':"%s" %self.parent.serialPage.portCombo.get(),
@@ -1384,19 +1386,20 @@ class NewScene(Frame):
         
         for cmd in execution:
           if cmd:
-            try: 
+            #try: 
                 if 'self.app.load' in cmd:                  
                   message=os.path.basename(cmd.split('"')[1].split('"')[0])
                   self.parent.streamdeckcanvas.filename=message
                   showMessage(self,Message="%s\nen cours de chargement..." %message.upper(),timeout=None)
+                  
                 
                 exec(cmd)
                 self.app.canvas.update_idletasks()
                 if 'self.app.load' in cmd:
                   self.messagealert.destroy()
                   #self.parent.showcanvas()                
-            except:
-              print ("execution error of : (%s)" %cmd)
+            #except:
+            #  print ("execution error of : (%s)" %cmd)
         
   
   
@@ -1497,9 +1500,10 @@ class StreamdeckCanvas(Toplevel):
     self.attributes('-fullscreen', True)
     #self.attributes('-topmost', False)
     self.configure(bg='black') 
+    self.actionmove=None
     #self.withdraw()
     self.paused=None
-    lines=5
+    lines=6
     #self.buttonwidth=int(self.parent.screenwidth/columns)-5
     #self.buttonheight=int(self.parent.screenheight/lines)-5
     self._mouseAction=None  
@@ -1509,6 +1513,7 @@ class StreamdeckCanvas(Toplevel):
         {"title": "__canvasstop", "command": ["stop"],"icon": "stop.png", "bgColor": "#882222"},               
         {"title": "__canvaszoomplus","command" :["zoomplus"],"icon": "zoomplus.png","bgColor": "#007F22"},
         {"title": "__canvaszoommoins","command" :["zoommoins"],"icon": "zoomminus.png","bgColor": "#007F22"},
+        {"title": "__canvasgoto","command" :["canvasmoveto"],"icon": "gotodisabled.png","bgColor": "#007FFF"},
         {"title":"__canvasleft","command":["canvasleft"],"icon": "chevron_left_circle.png","bgColor": "#007FFF"},
         {"title":"__canvasup","command":["canvasup"],"icon": "chevron_up_circle.png","bgColor": "#007FFF"},
         {"title":"__canvasdown","command":["canvasdown"],"icon": "chevron_down_circle.png","bgColor": "#007FFF"},        
@@ -1527,8 +1532,7 @@ class StreamdeckCanvas(Toplevel):
     self.CanvasButtonsX=self.parent.screenwidth-(self.buttonwidth*columns)-6 
     self.CanvasButtons.place(x=self.CanvasButtonsX,y=0,width=(self.buttonwidth*columns),height=self.parent.screenheight)
     self.CanvasButtons.place_forget()    
-    self.canvas=CNCCanvas.CNCCanvas(self.CanvasFrame, self.app, takefocus=True, background=self.FrameBgColor)
-    
+    self.canvas=CNCCanvas.CNCCanvas(self.CanvasFrame, self.app, takefocus=True, background=self.FrameBgColor)    
     self.canvas.selBbox=self.selBbox
     #self.CanvasFrame.loadConfig=self.loadConfig
     self.setguicanvas()
@@ -1536,7 +1540,7 @@ class StreamdeckCanvas(Toplevel):
     self.canvas.unbind('<Configure>')
     self.canvas.unbind('<Motion>')
     self.canvas.unbind('<Button-1>')
-    self.canvas.bind('<Button-1>',self.canvas.pan)
+    
     #self.canvas.bind('<Button-2>',self.zoomincanvas)
     self.canvas.bind('<B1-Motion>',self.canvas.pan)
     self.canvas.bind('<ButtonRelease-1>',self.canvas.panRelease)
@@ -1597,15 +1601,15 @@ class StreamdeckCanvas(Toplevel):
         x+=self.buttonwidth+5
         
     self.mesicones["__canvaspause"]=geticone("pause.png",self.buttonwidth-10,self.buttonheight-10) 
+    self.mesicones["__canvasgotoenabled"]=geticone("gotoenabled.png",self.buttonwidth-10,self.buttonheight-10)
     self.canvasbutton["__canvaszoommoins"]["button"].place_forget()  
     textsize=int((self.parent.GUI.get("fontSize")/1.5)*float(self.parent.screenwidth/1280))
     self.PositionMachine = Label(self, fg=self.parent.GUI.get("titleColor") if self.parent.GUI.get("titleColor") else "#FFFFFF",bg=self.parent.GUI.get("titleBgColor") if self.parent.GUI.get("titleBgColor") else "#000",font=tkFont.Font(size=textsize,weight="bold"),anchor=CENTER,text="")
     self.PositionMachine.place(x=0,y=self.parent.screenheight-(textsize+10),width=self.parent.screenwidth,height=textsize+10)
     
     self.CanvasFrame.update_idletasks()
-    
-    self.app.canvas=self.canvas 
-    
+    self.canvas.drawPath=self.drawPath
+    self.app.canvas=self.canvas     
     self.canvas.draw_workarea=False
     self.canvas.draw_probe=False
     self.canvas.draw_grid=True 
@@ -1618,7 +1622,59 @@ class StreamdeckCanvas(Toplevel):
          
     #self.updatecanvasbuttons()   
     
-    #-----------------------------------------------------------------    
+  def actionGantry(self, event):   
+    u,v,w = self.canvas.image2Machine(event.x,event.y)   
+    self.app.goto(u,v,w)
+   
+  #----------------------------------------------------------------------
+  # Create path for one g command
+  #----------------------------------------------------------------------
+  def drawPath(self, block, cmds):
+    self.canvas.cnc.motionStart(cmds)
+    xyz = self.canvas.cnc.motionPath()
+    self.canvas.cnc.motionEnd()
+    if xyz:
+      self.canvas.cnc.pathLength(block, xyz)
+      if self.canvas.cnc.gcode in (1,2,3):
+        block.pathMargins(xyz)
+        self.canvas.cnc.pathMargins(block)
+      if block.enable:
+        if self.canvas.cnc.gcode == 0 and self.canvas.draw_rapid:
+          xyz[0] = self.canvas._last
+        self.canvas._last = xyz[-1]
+      else:
+        if self.canvas.cnc.gcode == 0:
+          return None
+      coords = self.canvas.plotCoords(xyz)
+      if coords:
+        if block.enable:
+          if block.color:
+            fill = block.color
+          else:
+            fill = CNCCanvas.ENABLE_COLOR
+        else:
+          fill = CNCCanvas.DISABLE_COLOR
+        if self.canvas.cnc.gcode == 0:
+          if self.canvas.draw_rapid:            
+            x,y=coords[0]
+            if (abs(x)==0 and abs(y)==0) or (abs(x)==CNC.vars["wx"] and abs(y)==CNC.vars["wy"]):
+              #print ("retour sans tracage sleep1 ")
+              return None
+               
+            return self.canvas.create_line(coords,
+              fill=fill, width=0, dash=(4,3),tag="paths")
+        elif self.canvas.draw_paths:
+          #print ("sleep2",coords[0])
+          x,y=coords[0]
+          if abs(x)==CNC.vars["wx"] and abs(y)==CNC.vars["wy"]:
+            #print ("retour sans tracage")
+            return None
+          
+          return self.canvas.create_line(coords, fill=fill,
+              width=0, cap="projecting",tag="paths")
+    return None
+  
+  
   # ----------------------------------------------------------------------
   # Return selected objects bounding box
   # ----------------------------------------------------------------------
@@ -1626,9 +1682,10 @@ class StreamdeckCanvas(Toplevel):
   
   def selBbox(self):
     x1 = None
+    print ("myBBOX!")
     selection=["sel","sel2","sel3","sel4"]
     if self.myzoom>=0.5:
-      selection=["Grid"]
+      selection=["paths"]
     
     for tag in selection:
       bb = self.canvas.bbox(tag)
@@ -1643,7 +1700,7 @@ class StreamdeckCanvas(Toplevel):
         y2 = max(y2,bb[3])
 
     if x1 is None:
-      return self.canvas.bbox('all')
+      return self.canvas.bbox('paths')
     return x1,y1,x2,y2
   
   def releasemove(self,event):
@@ -1671,8 +1728,13 @@ class StreamdeckCanvas(Toplevel):
     self.jog=('jog' in state)
     self.jogrun=running or jog
     commande=["pause"] if self.app.running else ["run"]
-    icone=self.mesicones.get("__canvaspause") if self.app.running and not self.paused else self.mesicones.get("__canvasplay")
-    
+    icone=self.mesicones.get("__canvasgotoenabled") if self.actionmove else self.mesicones.get("__canvasgoto")
+    if self.actionmove:
+      self.canvas.bind('<Button-1>',self.actionGantry)
+    else:
+      self.canvas.unbind('<Button-1>')
+    self.canvasbutton.get("__canvasgoto")["button"].configure(image=icone) 
+    icone=self.mesicones.get("__canvaspause") if self.app.running and not self.paused else self.mesicones.get("__canvasplay")    
     self.canvasbutton.get("__canvasplay")["button"].configure(image=icone) 
     self.canvasbutton.get("__canvasplay")["button"].configure(command=lambda: self.commande(commande))
     self.PositionMachine.configure(text="(%s) --- Machine X:%s Y:%s Z:%s       ---      Work X:%s Y:%s Z:%s" %(CNC.vars["state"],"{: 9.3f}".format(CNC.vars["mx"]),"{: 9.3f}".format(CNC.vars["my"]),"{: 9.3f}".format(CNC.vars["mz"]),"{: 9.3f}".format(CNC.vars["wx"]),"{: 9.3f}".format(CNC.vars["wy"]),"{: 9.3f}".format(CNC.vars["wz"])))
@@ -1687,9 +1749,10 @@ class StreamdeckCanvas(Toplevel):
       self.showhide("__canvasstop",True)
     else:
       self.showhide("__canvasstop",None)
-    if self.alarm:
-      
+    if self.alarm:      
       self.returnstreamdeck(Alarm=True)
+    
+      
       
             
   def addbutton(self,item=None,posx=None,posy=None):    
@@ -1741,13 +1804,19 @@ class StreamdeckCanvas(Toplevel):
   def commande(self,commande=None):
     
     CMD=commande[0].lower()
-    zoomx,zoomy=self.currentzoomxy    
+    zoomx,zoomy=self.currentzoomxy 
+       
     if 'zoomplus'==CMD:      
       self.myzoom=self.myzoom+0.25
       self.canvas.menuZoomIn()
       self.canvas.update_idletasks()
       self.centerview()  
       self.showhide("__canvaszoommoins",True)
+    elif 'canvasmoveto'==CMD:
+      if self.actionmove:
+        self.actionmove=None
+      else:
+        self.actionmove=True
     elif 'showmenu'==CMD:
       if not self.viewmenu:
         self.showmenu.place(x=self.CanvasButtonsX-self.showmenu.winfo_width(),y=0)
