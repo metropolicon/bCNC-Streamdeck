@@ -1466,6 +1466,7 @@ class NewScene(Frame):
           else:
             self.parent.serialPage.autostart.set(True)       
         else:
+<<<<<<< HEAD
           execution=commande
           
         if execution:               
@@ -1484,6 +1485,33 @@ class NewScene(Frame):
                     #self.parent.showcanvas()                
               except:
                 print ("execution error of : (%s)" %cmd)
+=======
+          self.parent.serialPage.autostart.set(True)       
+      else:
+        execution=commande
+        
+        
+        
+      if execution:
+        
+        
+        for cmd in execution:
+          if cmd:
+            #try: 
+                if 'self.app.load' in cmd:                  
+                  message=os.path.basename(cmd.split('"')[1].split('"')[0])
+                  self.parent.streamdeckcanvas.filename=message
+                  showMessage(self,Message="%s\nen cours de chargement..." %message.upper(),timeout=None)
+                  
+                
+                exec(cmd)
+                self.app.canvas.update_idletasks()
+                if 'self.app.load' in cmd:
+                  self.messagealert.destroy()
+                  #self.parent.showcanvas()                
+            #except:
+            #  print ("execution error of : (%s)" %cmd)
+>>>>>>> 12f9cfd9747f29c1879c60bfa35d19d2deef404d
         
   
   
@@ -1760,7 +1788,11 @@ class StreamdeckCanvas(Toplevel):
   
   def selBbox(self):
     x1 = None
+<<<<<<< HEAD
     
+=======
+    print ("myBBOX!")
+>>>>>>> 12f9cfd9747f29c1879c60bfa35d19d2deef404d
     selection=["sel","sel2","sel3","sel4"]
     if self.myzoom>=0.5:
       selection=["paths"]

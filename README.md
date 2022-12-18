@@ -25,6 +25,9 @@ CNC home made with arduino (GRBL 1.1H), raspberry pi 4, 7" touchscreen
 
 
 ## Installation
+
+First : install BCNC if you didn't ! [get bCNC](https://github.com/vlachoudis/bCNC)
+
 [get zip file ](https://github.com/metropolicon/bCNC-Streamdeck/archive/refs/heads/main.zip) 
 
 unzip into bCNC directory ( for exemple into : c:\Python310\Lib\site-packages\bCNC )
