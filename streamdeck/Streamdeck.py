@@ -24,7 +24,7 @@ except ImportError:
   import tkinter as Tkinter
   from tkinter import ttk
 import CNCCanvas
-from CNC import CNC
+from CNC import CNC,WAIT
 import Utils
 import Camera
 import tkExtra
@@ -188,11 +188,16 @@ class Streamdeck(Toplevel):
       self.scenes=self.config.get("scenes")
       self.buttonFormat=self.config.get("buttons")  
       self.macros=self.config.get("macros")  
+      self.streamdeckcanvasDep=StreamdeckCanvasDep(self.root,self.app,self)
       self.streamdeckcanvas=StreamdeckCanvas(self.root,self.app,self)
       self.streamdeck=StreamdeckMain(self.root,self.app,self)
+      
       if self.GUI.get("touchscreen"): #desactivate mouse curcor for touchscreen
         self.streamdeckcanvas.config(cursor="none")
         self.streamdeck.config(cursor="none")
+      self.streamdeck.update()      
+      self.streamdeck.focus_force()
+      #self.streamdeckcanvasDep.withdraw()
   #-----------------------------------------------------------------
   def getstreamdeck(self):
     return self.streamdeck      
@@ -246,6 +251,8 @@ class StreamdeckMain(Toplevel):
     self.serialPortsIndex=0
     self.serialBaudsIndex=0
     self.streamdeckcanvas=parent.streamdeckcanvas
+    self.tooldiameter=None
+    self.queuecommand=[]
     
     
     self.app._paths    = None
@@ -267,7 +274,7 @@ class StreamdeckMain(Toplevel):
       #----- streamdeck scenes system icons
       self.buttonFormat["alarmStatus"]={"title": "alarmStatus","texte": "{{ cnc.alarmText }}","bgColor": 2,"textSize": 1.5,"condition": "cnc.alarm"}
       self.buttonFormat["reset"]={"title": "reset","command": ["reset"],"texte": "Reset","icon": "reset.png","bgColor": 10,"textSize":1,"condition": "cnc.alarm"}
-      self.buttonFormat["exit"]={"title": "exit","command": ["confirmScene",{"command":"exit","message":"Quitter bCNC ?"}],"condition":"!cnc.running","icon": "exit.png","texte": "Quitter bCNC","bgColor": 10,"textColor": 0,"textSize": 1.3}        
+      self.buttonFormat["exit"]={"title": "exit","command": [["confirmScene",{"command":"exit","message":"Quitter bCNC ?"}]],"condition":"!cnc.running","icon": "exit.png","texte": "Quitter bCNC","bgColor": 10,"textColor": 0,"textSize": 1.3}        
       self.buttonFormat["backconnect"]={"title": "backconnect","command": ["backScene"],"icon": "backward.png","bgColor": 6,"condition":"(connected)"}
       self.buttonFormat["portconnect123"]={"title": "portconnect123","texte":"Port:\n{{ selectedport }}","bgColor": "#007FFF"}
       self.buttonFormat["speedconnect123"]={"title": "speedconnect123","texte":"Speed:\n{{ selectedspeed }}","bgColor": "#FF7F00"}
@@ -284,7 +291,8 @@ class StreamdeckMain(Toplevel):
       self.buttonFormat["autoconnectyes"]={"title": "autoconnectyes","command": ["autoconnect"],"icon": "checkbox.png","condition":"(self.parent.serialPage.autostart.get())","texte": "AutoConnect","bgColor": 10,"textColor":0,"textSize": 1.3}
       self.buttonFormat["autoconnectno"]={"title": "autoconnectno","command": ["autoconnect"],"icon": "checkboxdisabled.png","condition":"(not self.parent.serialPage.autostart.get())","texte": "AutoConnect","bgColor": 10,"textColor":0,"textSize": 1.3}
       self.buttonFormat["back"]={"title":"back","command":["backScene"],"icon":"backward.png","bgColor":6,"condition":"!cnc.jog"}
-      self.buttonFormat["backspace"]={"title":"backspace","command":["inputCommand",["backspace"]],"icon":"backspace.png","bgColor":6}
+      self.buttonFormat["backnumpad"]={"title":"back","command":["self.queuecommand=[]","backScene"],"icon":"backward.png","bgColor":6,"condition":"!cnc.jog"}
+      self.buttonFormat["backspace"]={"title":"backspace","command":[["inputCommand","backspace"]],"icon":"backspace.png","bgColor":6}
       self.buttonFormat["confirm"]={"title":"confirm","command":["completeInput"],"icon":"checkmark_circle.png","bgColor":4}
       #self.buttonFormat["showcanvas"]={"title":"showcanvas","border":5,"bgColor":"#FFFFFF","icon":"_buttoncanvas.png","condition":"self.app.gcode.filename and not alarm","command":["self.parent.showcanvas()"]}
       self.buttonFormat["showcanvas"]={"title":"showcanvas","border":5,"icon":"_buttoncanvas.png","condition":"self.app.gcode.filename and not alarm","command":["self.parent.showcanvas()"]}
@@ -297,15 +305,15 @@ class StreamdeckMain(Toplevel):
       self.buttonFormat["__canvaszoommoins"]={"title": "__canvaszoommoins","command" :["zoommoins"],"icon": "minus.png","bgColor": "#007FFF"}
       self.buttonFormat[ "homing"]={"title": "homing","command": ["homing"],"icon": "home_door.png","texte": "Initialiser\nPosition Machine","bgColor": 8,"textSize": 1,"condition": "!cnc.locked && !cnc.alarm"}
       self.buttonFormat["unlock"]={"title": "unlock","command": ["unlock"],"texte": "Unlock","icon": "lock_open.png","bgColor": 3,"condition": "cnc.locked"}
-      self.buttonFormat["machinePosition"]={"title": "machinePosition","command": ["toggleUserFlag",["showAbsolutePosition"]],"texte": "Position Machine\n{{cnc.displayMpos}}","bgColor": 2,"textSize":1.2}
-      self.buttonFormat["point"]={"title": "point","command": ["input",["."]],"icon": "point.png","bgColor": 7}
-      self.buttonFormat["negative"]={"title": "negative","command": ["input",["-"]],"icon": "minus.png","bgColor": 7}
-      self.buttonFormat["positive"]={"title": "positive","command": ["input",["+"]],"icon": "plus.png","bgColor": 7}
+      self.buttonFormat["machinePosition"]={"title": "machinePosition","command": [["toggleUserFlag","showAbsolutePosition"]],"texte": "Position Machine\n{{cnc.displayMpos}}","bgColor": 2,"textSize":1.2}
+      self.buttonFormat["point"]={"title": "point","command": [["input","."]],"icon": "point.png","bgColor": 7}
+      self.buttonFormat["negative"]={"title": "negative","command": [["input","-"]],"icon": "minus.png","bgColor": 7}
+      self.buttonFormat["positive"]={"title": "positive","command": [["input","+"]],"icon": "plus.png","bgColor": 7}
       self.buttonFormat["numpadValue"]={"title": "numpadValue","texte": "Actual :{{ oldvalue }}\n{{ numpadValue }}","bgColor": 8,"textSize" : 1}
       
       #create numeric numpad buttons   
       for x in range(10):
-        self.buttonFormat["%s" %x]={"title": "%s" %x,"command": ["input",["%s" %x]],"icon": "%s.png" %x,"bgColor": 7 }
+        self.buttonFormat["%s" %x]={"title": "%s" %x,"command": [["input","%s" %x]],"icon": "%s.png" %x,"bgColor": 7 }
       
       #create all necessary scenes    
       self.scenes["alarm"]= {"buttons": [[ "back","alarmStatus","exit"],["reset",["homing","unlock"],"machinePosition"]],"columnslines":[3,2],"title":"ALARME"}      
@@ -313,12 +321,12 @@ class StreamdeckMain(Toplevel):
                   [None,"portconnect123","positiveports","negativeports",None],
                   [None,"speedconnect123","positivespeed","negativespeed",None]]             
       confirmbuttons= [["messageconfirm"],["oui",None,None,None,"non"]]      
-      numpadbuttons=[["back","0","1","2","3"],[None,"4","5","6","7"],[None,"8","9","point","negative"],["numpadValue",None,"backspace",None,"confirm"]]      
+      numpadbuttons=[["backnumpad","0","1","2","3"],[None,"4","5","6","7"],[None,"8","9","point","negative"],["numpadValue",None,"backspace",None,"confirm"]]      
       canvasbutton=[["__canvas"],["__canvasrun","__canvasleft","__canvasup","__canvasdown","__canvasright","__canvaszoomplus","__canvaszoommoins"]]
       self.scenes["__canvas"]={"buttons":canvasbutton}
       self.scenes["connect123"]={"buttons": connectbuttons }  
       self.scenes["confirm"]={"buttons": confirmbuttons }
-      self.scenes["numpad"]={"buttons": numpadbuttons,"columnslines":[5,4] }
+      self.scenes["numpad"]={"buttons": numpadbuttons,"columnslines":[5,4],"title":"..." }
         
       super().__init__(master = root) 
       self.attributes('-fullscreen', True)
@@ -363,6 +371,9 @@ class StreamdeckMain(Toplevel):
       self.filescene() #list gcodes directory
       self.showScene("home")  #show home.....     
       self.stepzlist=sorted(list(map(float, Utils.config.get("Control","zsteplist").split()))+[30.0,40.0,50.0]) #add some values for step Z....
+      self.execthread=threading.Thread(target=self.queueexec)
+      self.execthread.daemon = True
+      self.execthread.start()
   
    
   #-----------------------------------------------------------------
@@ -406,11 +417,35 @@ class StreamdeckMain(Toplevel):
     for item in list(self.app.terminal.get(0, END)):
       if "=" in item:
         self.paramscnc[item.split('=')[0]]=item.split('=')[1]
+    CNC.travel_x=float(self.paramscnc["$130"])
+    CNC.travel_y=float(self.paramscnc["$131"])
+    CNC.travel_z=float(self.paramscnc["$132"])
+     
     
+    #self.streamdeckcanvas.canvas.drawGrid()
   #-----------------------------------------------------------------  
   
   
-  
+  def showcanvasDep(self):   
+    self.parent.streamdeckcanvasDep.pausethread=None 
+    self.parent.streamdeckcanvasDep.focus_force()
+    self.app.canvas=self.parent.streamdeckcanvasDep.canvas
+    self.app.canvas.drawGrid()
+    self.app.canvas.update()
+    self.app.canvas.fit2Screen()
+    self.app.canvas.update() 
+    """
+    self.parent.streamdeckcanvasDep.drawGrid()
+    self.parent.streamdeckcanvasDep.canvas.update()
+    self.parent.streamdeckcanvasDep.canvas.menuZoomOut()
+    self.parent.streamdeckcanvasDep.canvas.update_idletasks()
+    self.parent.streamdeckcanvasDep.centerview()
+    #self.parent.streamdeckcanvasDep.canvas.reset()
+    self.parent.streamdeckcanvasDep.canvas.fit2Screen()
+    self.parent.streamdeckcanvasDep.canvas.update() 
+    """
+    
+          
   def showcanvas(self):   
     self.parent.streamdeckcanvas.pausethread=None 
     self.parent.streamdeckcanvas.focus_force()
@@ -425,6 +460,7 @@ class StreamdeckMain(Toplevel):
   #-----------------------------------------------------------------
   def hidecanvas(self,Alarm=None):    
     self.parent.streamdeckcanvas.pausethread=True
+    self.app.canvas=self.parent.streamdeckcanvas.canvas
     self.focus_force()
     if Alarm:
       self.app.stopRun()
@@ -484,7 +520,11 @@ class StreamdeckMain(Toplevel):
       if oldscene:
        
         oldscene.destroy()
-      title=self.scenes.get(SceneName).get("title")
+      if SceneName=='numpad':
+        if self.entervalue[0]["variable"]:
+          title='Enter value of "%s"' %self.entervalue[0]["variable"]
+      else:
+        title=self.scenes.get(SceneName).get("title")
       self.SceneNameEnCours=SceneName
       self.SceneEnCours=NewScene(root=self.root,app=self.app,SceneName=SceneName,buttons=SceneElements,parent=self,titlescene=title if title else "",columns=columns,lines=lines)
        
@@ -561,11 +601,11 @@ class StreamdeckMain(Toplevel):
     self.listfilebuttons={"back": {"title": "back","command": ["backScene"],"icon": "backward.png","bgColor": 6}}
     sceneboutons=["back"]
     if not self.gcodespathactuel==self.gcodespath and basepath in self.gcodespathactuel: 
-      self.listfilebuttons["backfile"]={"title": "back","texte":"..","command": ["backFileList",self.historydir[-1]],"icon": "pointpoint.png","bgColor": 5} 
+      self.listfilebuttons["backfile"]={"title": "back","texte":"..","command": [["backFileList",self.historydir[-1]]],"icon": "pointpoint.png","bgColor": 5} 
       sceneboutons.append("backfile")  
     
-    self.listfilebuttons["_nextpage"]={"title": "_nextpage","command": ["MovePageFiles",self.gcodespathactuel,indexnextfiles],"icon": "chevron_down_circle.png","bgColor": 6}
-    self.listfilebuttons["_prevpage"]={"title": "_prevpage","command": ["MovePageFiles",self.gcodespathactuel,indexprevfiles],"icon": "chevron_up_circle.png","bgColor": 6,"condition":"(self.parent.prevpagefiles)"}
+    self.listfilebuttons["_nextpage"]={"title": "_nextpage","command": [["MovePageFiles",self.gcodespathactuel,indexnextfiles]],"icon": "chevron_down_circle.png","bgColor": 6}
+    self.listfilebuttons["_prevpage"]={"title": "_prevpage","command": [["MovePageFiles",self.gcodespathactuel,indexprevfiles]],"icon": "chevron_up_circle.png","bgColor": 6,"condition":"(self.parent.prevpagefiles)"}
     self.listfilebuttons["none"]={"title":"","icon":None,"command":None,"bgcolor":self.GUI.get("bgColor")}
       
     idx=0
@@ -635,6 +675,21 @@ class StreamdeckMain(Toplevel):
     #self.app.attributes('-topmost', True)
     self.app.focus_force()
     
+  def queueexec(self):
+    while True:      
+      if len(self.queuecommand)>0: 
+        print ("QUEUE : ",self.queuecommand)               
+        if not "self.queuecommand=[]" in self.queuecommand and (self.pausethread or (self.SceneNameEnCours and 'numpad' in self.SceneNameEnCours.lower())):           
+             #print('attente numpad')             
+             i=0
+        else: 
+          if "self.queuecommand=[]" in self.queuecommand:
+            self.queuecommand=self.queuecommand[self.queuecommand.index("self.queuecommand=[]")+1:]
+          self.SceneEnCours.interpret([self.queuecommand[0]])
+          self.queuecommand.pop(0)
+        
+          
+      time.sleep(0.2)
     
 #==============================================================================
 # NEWSCENE
@@ -663,8 +718,6 @@ class NewScene(Frame):
     self.SceneName=SceneName
     self.canvas=None
     self.canvaszoom=None  
-    
-    
     self.centermessage=None
     self.place(x=0,y=0,width=self.parent.screenwidth, height=self.parent.screenheight)
     self.FrameBgColor=self.parent.GUI.get("bgColor") if self.parent.GUI.get("bgColor") else "#000000"
@@ -885,6 +938,7 @@ class NewScene(Frame):
     
       
     variables={
+        'TOOLD':self.parent.tooldiameter,
         'cnc.state':CNC.vars["state"].lower(),
         'cnc.connected':not "not connected" in CNC.vars["state"].lower(),
         'cnc.alarm':('alarm' in state),
@@ -970,13 +1024,13 @@ class NewScene(Frame):
          
           destvariable=itemvar.replace(' ','')
           if variables.get(destvariable):
-            texte=texte.replace(itemvar,"%s" %variables.get(destvariable)).replace('{','').replace('}','')
+            texte=texte.replace(itemvar,"%s" %variables.get(destvariable))
           else:
             try:
               texte=texte.replace(itemvar,eval("self.app.%s" %destvariable))
             except:
-              i=0
-      self.status[item].get("variable").set(texte)    
+              texte=texte.replace(itemvar,"---")
+      self.status[item].get("variable").set(texte.replace('{','').replace('}',''))    
         
     #------- CONDITIONS ------------      
     for item in self.conditions: 
@@ -1041,8 +1095,6 @@ class NewScene(Frame):
    
   def mycallback(self,event):
     buttonidx=self.whichbutton(event)
-    
-    
     self.interpret(self.buttons[buttonidx].get("command"))
   
    
@@ -1080,7 +1132,7 @@ class NewScene(Frame):
   
    
 
-  def interpret(self,commande=None):
+  def interpret(self,commandelist=None):
     
     state=CNC.vars["state"].lower()
     jog=('jog' in state) 
@@ -1096,309 +1148,342 @@ class NewScene(Frame):
     
     execution=[]
      
-    self.parent.confirmcommand=""
-    if commande:
-      CMD=commande[0].lower()
-      
-        
-      if "confirm"  in CMD:
+    if commandelist:
+     if len(commandelist)>1:
+      self.parent.queuecommand=self.parent.queuecommand+commandelist      
+     else:
+      for commande in commandelist: 
+        if not commande.__class__ is list:
+          CMD=commande.lower()
+          commande=[commande]
+        else:          
+          CMD=commande[0].lower()          
+             
         try:
-          message=commande[1].get("message")
+          parametres=commande[1:]
         except:
-          message="Validez vous votre choix ?"
-        try:
-          confirmcommand=commande[1].get("command")
-        except:
-          confirmcommand=""
-        self.parent.buttonFormat["oui"]["command"]=[confirmcommand]
-        self.parent.buttonFormat["messageconfirm"]["message"]=message
-        
-      if "macro"==CMD and self.parent.macros:
-        if len(commande)>1:
-          macro=self.parent.macros.get(commande[1][0].lower())
+          parametres=None
           
-          showMessage(self,Message="Execute macro : %s" %macro,timeout=500)
-          parametres=commande[1][1:]
-          toexecute=[]
-          if macro:
-            varidx=0
-            for item in macro:
-              tempo=item
-              if '{{' in tempo:
-                variable=tempo.split('{{VAR')[1].split('}}')[0]
-                if variable:
-                  tempo=tempo.replace('{{VAR%s}}' %variable,'%s' %parametres[int(variable)])
-              execution.append("self.app.control.sendGCode(\"%s\")" %(tempo.replace(' ',''))) 
-      elif 'reset' in CMD and len(CMD)>5:
-        actuel=self.overrideMode(Mode=commande[0].split("reset")[1],Reset=True)              
-               
-      elif "increase" in CMD:
-        actuel=self.overrideMode(Mode=commande[0].split("increase")[1])
-        if actuel:       
-          if 'rapid' in CMD:
-            newvalue=int(actuel+25) if actuel<100 else 100        
-          else:
-            newvalue=int(actuel+25) if actuel<200 else 200        
-          self.overrideMode(Mode=commande[0].split("increase")[1],NewValue=newvalue)
-      elif "decrease" in CMD:        
-        actuel=self.overrideMode(Mode=commande[0].split("decrease")[1])        
-        if actuel:                 
-          newvalue=int(actuel-25) if actuel>25 else 0        
-          self.overrideMode(Mode=commande[0].split("decrease")[1],NewValue=newvalue)
-        
-      elif "navigate" in CMD:
-        execution=["self.parent.showScene(\"%s\")" %commande[1][0]]
-      elif "exit"==CMD:
-        if not self.app.running:
+        if "confirm"  in CMD:
           try:
-            os.remove("%s%sicons%s_buttoncanvas.png" %(prgpath,os.sep,os.sep))
+            message=parametres[0].get("message")
           except:
-            i=0
-          self.app.quit()   
-        else:
-          showMessage(self,Message="IMPOSSIBLE !!!\nTRAVAIL EN COURS ....")
+            message="Validez vous votre choix ?"
+          try:
+            confirmcommand=parametres[0].get("command")
+          except:
+            confirmcommand=""
+          self.parent.buttonFormat["oui"]["command"]=[confirmcommand]
+          self.parent.buttonFormat["messageconfirm"]["message"]=message
           
-      elif "reboot" in CMD:
-        print("REBOOT")
-        os.system("reboot")    
-      elif "scene" in CMD and not 'self.parent' in CMD:        
-        execution=["self.parent.showScene(\"%s\")" %commande[0]]
-      elif 'jog'==CMD and not jogrun:
-        execution=["self.app.control.move%s%s()" %(commande[1][1].upper(),commande[1][0].replace('-','down').replace('+','up'))]        
-      elif 'jogdistance'==CMD:
-        axe=commande[1][1].upper()
-        #self.stepzlist
-        
-        oldvalueZ=float(self.app.control.getStep('z')) 
-        oldvalueXY=float(self.app.control.getStep('x'))
-        if axe=='Z':
-          idxmoins=len(self.parent.stepzlist)
-          while idxmoins>0 and oldvalueZ<=self.parent.stepzlist[idxmoins-1]:
-            idxmoins-=1
-          idxplus=idxmoins
-          while idxplus<=len(self.parent.stepzlist) and oldvalueZ>=self.parent.stepzlist[idxplus-1]:
-            idxplus+=1
-          if idxmoins<0:
-            idxmoins=0
-          else:
-            idxmoins-=1
-          if idxplus>len(self.parent.stepzlist):
-            idxplus=len(self.parent.stepzlist)-1
-          else:
-            idxplus-=1        
-          newvalueZ=self.parent.stepzlist[idxplus if commande[1][0]=='+' else idxmoins]                    
-          execution=["self.app.control.setStep(float(%s),float(%s))" %(oldvalueXY,newvalueZ)]
-        else:
-          execution=["self.app.control.%sStep()" %('inc' if commande[1][0]=='+' else 'dec')]
-          execution.append("self.app.control.setStep(float(self.app.control.getStep('x')),float(%s))" %oldvalueZ)
-           
-    
-      elif 'gcode'==CMD and not self.app.running:
-        showMessage(self,Message="GCODE = %s" %commande[1],timeout=1500)
-        if len(commande)>1:
-          for item in commande[1]:
-            execution.append("self.app.control.sendGCode(\"%s\")" %(item.replace(' ','')))
-      elif 'unlock'==CMD and not jogrun:
-        showMessage(self,Message="Unlocking...",timeout=500)
-        execution=["self.app.unlock()"]
-      elif 'reset'==CMD and not jogrun:
-        showMessage(self,Message="Resetting GRBL...",timeout=500)
-        execution=["self.app.softReset()"]
-      elif ('home'==CMD or 'homing'==CMD) and not jogrun:
-        showMessage(self,Message="Homing...",timeout=1500)
-        execution=["self.app.home()"]
-      elif 'backfilelist'==CMD:
-        del(self.parent.historydir[-1])
-        execution=['self.parent.filescene(\"%s\")' %commande[1].replace('\\','\\\\'),'self.parent.showScene("gcodeList")']
-      elif 'movepagefiles'==CMD:
-        execution=['self.parent.filescene(\"%s\",%d,True)' %(commande[1].replace('\\','\\\\'),commande[2])] #,'self.parent.showScene("gcodeList")']
-      elif "backtobcnc"==CMD:        
-        self.parent.backtoBCNC()
-      elif "run"==CMD and not jogrun:
-        execution=[self.app.run()]
-      elif "pause"==CMD and jogrun:
-        execution=[self.app.pause()]
-      elif "stop"==CMD and jogrun:
-        execution=[self.app.stopRun()]
-      #-----------------------------------------------------------------------------
-      elif "enter"==CMD[:5]:
-        self.parent.entercommand=CMD[5:]
-        
-        entervalue=commande[1][0]
-        self.parent.entervalue=[{"variable":entervalue,"value":None}]
-        if self.parent.entercommand.lower()=='stepxy':
-          self.parent.oldvalue=self.app.control.getStep('x')
-        elif self.parent.entercommand.lower()=='stepz':
-          self.parent.oldvalue=self.app.control.getStep('z')
-        elif self.parent.entercommand.lower()=='workposition':          
-          self.parent.oldvalue="{: 9.3f}".format(CNC.vars["w%s" %entervalue]) 
-        self.parent.showScene("numpad")
-        execution=None
-      elif "completeinput"==CMD:
-        variable=self.parent.entervalue[0]["variable"]
-        try:
-            value=float(self.parent.entervalue[0]["value"])
-        except:
-            value=None
-        if value:          
-          if self.parent.entercommand.lower()=='workposition':
-            coords={"x":None,"y":None,"z":None}         
-            if variable.lower() in 'xyz': 
-              try:
-                value = round(float(value), 3)
-                coords[variable.lower()]=value
-                self.app.mcontrol._wcsSet(coords['x'],coords['y'],coords['z'])
-                #wx,wy,wz - mx,my,mz
-              except:
-                
-                pass        
-          if self.parent.entercommand.lower()=='position':
-            coords={"x":None,"y":None,"z":None}         
-            if variable.lower() in 'xyz': 
-              try:
-                value = round(float(value), 3)
-                coords[variable.lower()]=value
-                self.app.mcontrol._wcsSet(coords['x'],coords['y'],coords['z'])
-                #wx,wy,wz - mx,my,mz
-              except:
-                
-                pass   
-          elif self.parent.entercommand.lower()=='stepxy':
-            value=self.parent.entervalue[0]["value"]
-            self.app.control.setStep(float(value),float(self.app.control.getStep('z')))
-          elif self.parent.entercommand.lower()=='stepz':
-            value=self.parent.entervalue[0]["value"]
-            self.app.control.setStep(float(self.app.control.getStep('x')),float(value))  
-          
-        
-        self.parent.entervalue[0]["variable"]=None
-        self.parent.entervalue[0]["value"]=None
-        execution=["self.parent.showScene(\"backScene\")"]
-        
-      elif "inputcommand"==CMD:
-        if "backspace"==commande[1][0].lower():
-          value=self.parent.entervalue[0].get("value")
-          if value:
-            value=value[:-1]            
-            self.parent.entervalue[0]["value"]=value
-            if len(value)<=0:
-              self.enablebutton("negative",True)
-            else:
-              self.enablebutton("negative",False)
-          else:
-            self.enablebutton("negative",True)  
-      elif 'input'==CMD:
-        value=self.parent.entervalue[0].get("value")
-        if not value:
-          value=""
-        addvalue=commande[1][0]
-        
-        if '-' in addvalue:
-          if len(value)<=0:
-            value=addvalue           
-            self.parent.entervalue[0]["value"]=value          
+        if "macro"==CMD and self.parent.macros:
+          if len(parametres[0])>1:
+            TOOLD=self.parent.tooldiameter
+            print ("Macro : ",commande)
+            print ("self.parent.tooldiameter=",self.parent.tooldiameter)
+            print ("SceneEnCours :",self.parent.SceneNameEnCours)
+            macro=self.parent.macros.get(parametres[0].lower())
+            self.app.emptyQueue()
+            self.app.purgeController()            
+            showMessage(self,Message="Execute macro : %s" %macro,timeout=500)            
+            toexecute=[]
+            cpt=0
             
-        elif ('.' in value and len(value)<7) or (len(value)<4):
-          value=value+addvalue                  
-          self.parent.entervalue[0]["value"]=value
-        if len(value)<=0:
-          self.enablebutton("negative",True)
-        else:
-          self.enablebutton("negative",False)
-      #-----------------------------------------------------------------------------
-      elif "goto"  ==CMD and not jogrun:
+            for variable in parametres[1:]:
+              try:
+                exec("VAR%d=%f" %(cpt,float(variable)))
+                print("variable : (VAR%d) :" %cpt,eval("VAR%d" %cpt))
+                cpt+=1
+              except:
+                print ("erreur variable : ",variable)
+                macro=None
+                break
+              
+            if macro:
+              varidx=0
+              for item in macro:
+                tempo=item
+                if '{{' in tempo:
+                  variable=tempo.split('{{')[1].split('}}')[0]
+                  evaluation=eval(variable)
+                  if variable:
+                    tempo=tempo.replace('{{%s}}' %variable,'%s' %evaluation) #parametres[int(variable)+1])                    
+                print ("MACRO exec : %s" %tempo)
+                execution.append("self.app.control.sendGCode(\"%s\")" %tempo) # %(tempo.replace(' ',''))) 
+                #self.app.queue.put((WAIT,))
+        elif "showdep"==CMD:
+          self.parent.showcanvasDep()
         
-        if not "e" in self.parent.homePosition.lower():
-          sensx="-"
-        else:
-          sensx=""
-        if not "n" in self.parent.homePosition.lower():
-          sensy="-"
-        else:
-          sensy=""
-           
-        xpercent=commande[1][0]
-        ypercent=commande[1][1]
-        V130=float(self.parent.paramscnc["$130"])*float(xpercent.replace('%', 'e-2'))
-        V131=float(self.parent.paramscnc["$131"])*float(ypercent.replace('%', 'e-2'))
-        V132=float(self.parent.paramscnc["$132"])
-        """
-        $130 X max travel [mm]
-        $131 Y max travel [mm]
-        $132 Z max travel [mm]
-        """
-        
-        cmdcode="G53 X%s%.3f Y%s%.3f" %(sensx,V130,sensy,V131)
-        execution=["self.app.control.sendGCode(\"%s\")" %cmdcode]
-      elif 'setzero' in CMD:
-        try:
-          axe=commande[1][0].upper()
-          gcode="G10 L20 P1 %s0" %axe
-          self.app.control.sendGCode(gcode)
-          showMessage(self,Message="SET %s0 OK" %axe,timeout=500)
-        except:
-          i=0     
-      elif "nextportsconnect"==CMD:
-        
-        if self.parent.serialPortsIndex<len(self.parent.serialPorts)-1:
-          self.parent.serialPortsIndex+=1
-          self.parent.serialPage.portCombo.set(self.parent.serialPorts[self.parent.serialPortsIndex])        
-        
-      elif "prevportsconnect"==CMD:
-        
-        if self.parent.serialPortsIndex>0:
-          self.parent.serialPortsIndex-=1
-          self.parent.serialPage.portCombo.set(self.parent.serialPorts[self.parent.serialPortsIndex])    
-        
-      elif "nextspeedconnect"==CMD:
-        self.parent.serialBaudsIndex+=1
-        self.parent.serialPage.baudCombo.set(BAUDS[self.parent.serialBaudsIndex])
-        
-        
-      elif "prevspeedconnect"==CMD:
-        self.parent.serialBaudsIndex-=1
-        self.parent.serialPage.baudCombo.set(BAUDS[self.parent.serialBaudsIndex])
-        
-      
-      elif "refreshports"==CMD:
-        showMessage(self,Message="Refresh ports...",timeout=500)
-        self.parent.getserialPorts()
-        self.parent.serialPortsIndex=0
-        self.parent.serialPage.portCombo.set(self.parent.serialPorts[self.parent.serialPortsIndex])    
-        
-        
-      elif "serialconnect"==CMD:
-        self.app.event_generate("<<Connect>>")
-        showMessage(self,Message=CNC.vars["state"],timeout=500)        
-                
-      elif "autoconnect"==CMD:
-        if self.parent.serialPage.autostart.get():
-          self.parent.serialPage.autostart.set(False)
-        else:
-          self.parent.serialPage.autostart.set(True)       
-      else:
-        execution=commande
-        
-        
-        
-      if execution:
-        
-        
-        for cmd in execution:
-          if cmd:
-            try: 
-                if 'self.app.load' in cmd:                  
-                  message=os.path.basename(cmd.split('"')[1].split('"')[0])
-                  self.parent.streamdeckcanvas.filename=message
-                  showMessage(self,Message="%s\nen cours de chargement..." %message.upper(),timeout=None)
-                
-                exec(cmd)
-                self.app.canvas.update_idletasks()
-                if 'self.app.load' in cmd:
-                  self.messagealert.destroy()
-                  #self.parent.showcanvas()                
+        elif 'reset' in CMD and len(CMD)>5:
+          actuel=self.overrideMode(Mode=commande[0].split("reset")[1],Reset=True)              
+                 
+        elif "increase" in CMD:
+          actuel=self.overrideMode(Mode=commande[0].split("increase")[1])
+          if actuel:       
+            if 'rapid' in CMD:
+              newvalue=int(actuel+25) if actuel<100 else 100        
+            else:
+              newvalue=int(actuel+25) if actuel<200 else 200        
+            self.overrideMode(Mode=commande[0].split("increase")[1],NewValue=newvalue)
+        elif "decrease" in CMD:        
+          actuel=self.overrideMode(Mode=commande[0].split("decrease")[1])        
+          if actuel:                 
+            newvalue=int(actuel-25) if actuel>25 else 0        
+            self.overrideMode(Mode=commande[0].split("decrease")[1],NewValue=newvalue)
+          
+        elif "navigate" in CMD:
+          execution=["self.parent.showScene(\"%s\")" %parametres[0]]
+        elif "exit"==CMD:
+          if not self.app.running:
+            try:
+              os.remove("%s%sicons%s_buttoncanvas.png" %(prgpath,os.sep,os.sep))
             except:
-              print ("execution error of : (%s)" %cmd)
+              i=0
+            self.app.quit()   
+          else:
+            showMessage(self,Message="IMPOSSIBLE !!!\nTRAVAIL EN COURS ....")
+            
+        elif "reboot" in CMD:
+          print("REBOOT")
+          os.system("reboot")    
+        elif "scene" in CMD and not 'self.parent' in CMD:        
+          execution=["self.parent.showScene(\"%s\")" %commande[0]]
+        elif 'jog'==CMD and not jogrun:
+          execution=["self.app.control.move%s%s()" %(parametres[1].upper(),parametres[0].replace('-','down').replace('+','up'))]        
+        elif 'jogdistance'==CMD:
+          axe=parametres[1].upper()
+          #self.stepzlist
+          
+          oldvalueZ=float(self.app.control.getStep('z')) 
+          oldvalueXY=float(self.app.control.getStep('x'))
+          if axe=='Z':
+            idxmoins=len(self.parent.stepzlist)
+            while idxmoins>0 and oldvalueZ<=self.parent.stepzlist[idxmoins-1]:
+              idxmoins-=1
+            idxplus=idxmoins
+            while idxplus<=len(self.parent.stepzlist) and oldvalueZ>=self.parent.stepzlist[idxplus-1]:
+              idxplus+=1
+            if idxmoins<0:
+              idxmoins=0
+            else:
+              idxmoins-=1
+            if idxplus>len(self.parent.stepzlist):
+              idxplus=len(self.parent.stepzlist)-1
+            else:
+              idxplus-=1        
+            newvalueZ=self.parent.stepzlist[idxplus if parametres[0]=='+' else idxmoins]                    
+            execution=["self.app.control.setStep(float(%s),float(%s))" %(oldvalueXY,newvalueZ)]
+          else:
+            execution=["self.app.control.%sStep()" %('inc' if parametres[0]=='+' else 'dec')]
+            execution.append("self.app.control.setStep(float(self.app.control.getStep('x')),float(%s))" %oldvalueZ)
+             
+      
+        elif 'gcode'==CMD and not self.app.running:
+          showMessage(self,Message="GCODE = %s" %parametres,timeout=1500)
+          if len(commande)>1:
+            for item in parametres:
+              execution.append("self.app.control.sendGCode(\"%s\")" %(item.replace(' ','')))
+        elif 'unlock'==CMD and not jogrun:
+          showMessage(self,Message="Unlocking...",timeout=500)
+          execution=["self.app.unlock()"]
+        elif 'reset'==CMD and not jogrun:
+          showMessage(self,Message="Resetting GRBL...",timeout=500)
+          execution=["self.app.softReset()"]
+        elif ('home'==CMD or 'homing'==CMD) and not jogrun:
+          showMessage(self,Message="Homing...",timeout=1500)
+          execution=["self.app.home()"]
+        elif 'backfilelist'==CMD:
+          del(self.parent.historydir[-1])
+          execution=['self.parent.filescene(\"%s\")' %parametres[0].replace('\\','\\\\'),'self.parent.showScene("gcodeList")']
+        elif 'movepagefiles'==CMD:
+          execution=['self.parent.filescene(\"%s\",%d,True)' %(parametres[0].replace('\\','\\\\'),parametres[1])] #,'self.parent.showScene("gcodeList")']
+        elif "backtobcnc"==CMD:        
+          self.parent.backtoBCNC()
+        elif "run"==CMD and not jogrun:
+          execution=[self.app.run()]
+        elif "pause"==CMD and jogrun:
+          execution=[self.app.pause()]
+        elif "stop"==CMD and jogrun:
+          execution=[self.app.stopRun()]
+        #-----------------------------------------------------------------------------
+        elif "enter"==CMD[:5]:
+          self.parent.entercommand=CMD[5:]        
+          entervalue=parametres[0]
+          self.parent.entervalue=[{"variable":entervalue,"value":None}]
+          if self.parent.entercommand.lower()=='stepxy':
+            self.parent.oldvalue=self.app.control.getStep('x')
+          elif self.parent.entercommand.lower()=='stepz':
+            self.parent.oldvalue=self.app.control.getStep('z')
+          elif self.parent.entercommand.lower()=='workposition':          
+            self.parent.oldvalue="{: 9.3f}".format(CNC.vars["w%s" %entervalue]) 
+          elif self.parent.entercommand.lower()=='tooldiameter':          
+            self.parent.oldvalue=self.parent.tooldiameter
+          self.parent.showScene("numpad")
+          execution=None
+        elif "completeinput"==CMD:
+          print ("COMPLETEINPOUT !!!",self.parent.entervalue[0]["variable"]," - ",self.parent.entercommand)
+          variable=self.parent.entervalue[0]["variable"]
+          try:
+              value=float(self.parent.entervalue[0]["value"])
+          except:
+              value=None
+          if value:          
+            if self.parent.entercommand.lower()=='workposition':
+              coords={"x":None,"y":None,"z":None}         
+              if variable.lower() in 'xyz': 
+                try:
+                  value = round(float(value), 3)
+                  coords[variable.lower()]=value
+                  self.app.mcontrol._wcsSet(coords['x'],coords['y'],coords['z'])
+                  #wx,wy,wz - mx,my,mz
+                except:                  
+                  pass        
+            if self.parent.entercommand.lower()=='position':
+              coords={"x":None,"y":None,"z":None}         
+              if variable.lower() in 'xyz': 
+                try:
+                  value = round(float(value), 3)
+                  coords[variable.lower()]=value
+                  self.app.mcontrol._wcsSet(coords['x'],coords['y'],coords['z'])
+                  #wx,wy,wz - mx,my,mz
+                except:
+                  
+                  pass   
+            elif self.parent.entercommand.lower()=='stepxy':
+              value=self.parent.entervalue[0]["value"]
+              self.app.control.setStep(float(value),float(self.app.control.getStep('z')))
+            elif self.parent.entercommand.lower()=='stepz':
+              value=self.parent.entervalue[0]["value"]
+              self.app.control.setStep(float(self.app.control.getStep('x')),float(value))  
+            elif self.parent.entercommand.lower()=='tooldiameter':
+              print ("set tool diameter :",value)
+              self.parent.tooldiameter=value
+              
+          
+          self.parent.entervalue[0]["variable"]=None
+          self.parent.entervalue[0]["value"]=None
+          execution=["self.parent.showScene(\"backScene\")"]
+          
+        elif "inputcommand"==CMD:
+          if "backspace"==parametres[0].lower():
+            value=self.parent.entervalue[0].get("value")
+            if value:
+              value=value[:-1]            
+              self.parent.entervalue[0]["value"]=value
+              if len(value)<=0:
+                self.enablebutton("negative",True)
+              else:
+                self.enablebutton("negative",False)
+            else:
+              self.enablebutton("negative",True)  
+        elif 'input'==CMD:
+          value=self.parent.entervalue[0].get("value")
+          if not value:
+            value=""
+          addvalue=parametres[0]
+          
+          if '-' in addvalue:
+            if len(value)<=0:
+              value=addvalue           
+              self.parent.entervalue[0]["value"]=value          
+              
+          elif ('.' in value and len(value)<7) or (len(value)<4):
+            value=value+addvalue                  
+            self.parent.entervalue[0]["value"]=value
+          if len(value)<=0:
+            self.enablebutton("negative",True)
+          else:
+            self.enablebutton("negative",False)
+        #-----------------------------------------------------------------------------
+        elif "goto"  ==CMD and not jogrun:
+          
+          if "e" in self.parent.homePosition.lower():
+            sensx="-"
+          else:
+            sensx=""
+          if "n" in self.parent.homePosition.lower():
+            sensy="-"
+          else:
+            sensy=""
+             
+          xpercent=parametres[0]
+          ypercent=parametres[1]
+          V130=float(self.parent.paramscnc["$130"])*float(xpercent.replace('%', 'e-2'))
+          V131=float(self.parent.paramscnc["$131"])*float(ypercent.replace('%', 'e-2'))
+          V132=float(self.parent.paramscnc["$132"])
+          """
+          $130 X max travel [mm]
+          $131 Y max travel [mm]
+          $132 Z max travel [mm]
+          """
+          
+          cmdcode="G53 X%s%.3f Y%s%.3f" %(sensx,V130,sensy,V131)
+          execution=["self.app.control.sendGCode(\"%s\")" %cmdcode]
+        elif 'setzero' in CMD:
+          try:
+            axe=parametres[0].upper()
+            gcode="G10 L20 P1 %s0" %axe
+            self.app.control.sendGCode(gcode)
+            showMessage(self,Message="SET %s0 OK" %axe,timeout=500)
+          except:
+            i=0     
+        elif "nextportsconnect"==CMD:
+          
+          if self.parent.serialPortsIndex<len(self.parent.serialPorts)-1:
+            self.parent.serialPortsIndex+=1
+            self.parent.serialPage.portCombo.set(self.parent.serialPorts[self.parent.serialPortsIndex])        
+          
+        elif "prevportsconnect"==CMD:
+          
+          if self.parent.serialPortsIndex>0:
+            self.parent.serialPortsIndex-=1
+            self.parent.serialPage.portCombo.set(self.parent.serialPorts[self.parent.serialPortsIndex])    
+          
+        elif "nextspeedconnect"==CMD:
+          self.parent.serialBaudsIndex+=1
+          self.parent.serialPage.baudCombo.set(BAUDS[self.parent.serialBaudsIndex])
+          
+          
+        elif "prevspeedconnect"==CMD:
+          self.parent.serialBaudsIndex-=1
+          self.parent.serialPage.baudCombo.set(BAUDS[self.parent.serialBaudsIndex])
+          
+        
+        elif "refreshports"==CMD:
+          showMessage(self,Message="Refresh ports...",timeout=500)
+          self.parent.getserialPorts()
+          self.parent.serialPortsIndex=0
+          self.parent.serialPage.portCombo.set(self.parent.serialPorts[self.parent.serialPortsIndex])    
+          
+          
+        elif "serialconnect"==CMD:
+          self.app.event_generate("<<Connect>>")
+          showMessage(self,Message=CNC.vars["state"],timeout=500)        
+                  
+        elif "autoconnect"==CMD:
+          if self.parent.serialPage.autostart.get():
+            self.parent.serialPage.autostart.set(False)
+          else:
+            self.parent.serialPage.autostart.set(True)       
+        else:
+          execution=commande
+          
+        if execution:               
+          for cmd in execution:
+            if cmd:
+              try: 
+                  if 'self.app.load' in cmd:                  
+                    message=os.path.basename(cmd.split('"')[1].split('"')[0])
+                    self.parent.streamdeckcanvas.filename=message
+                    showMessage(self,Message="%s\nen cours de chargement..." %message.upper(),timeout=None)
+                  exec(cmd)
+                  
+                  self.app.canvas.update_idletasks()
+                  if 'self.app.load' in cmd:
+                    self.messagealert.destroy()
+                    #self.parent.showcanvas()                
+              except:
+                print ("execution error of : (%s)" %cmd)
         
   
   
@@ -1499,9 +1584,10 @@ class StreamdeckCanvas(Toplevel):
     self.attributes('-fullscreen', True)
     #self.attributes('-topmost', False)
     self.configure(bg='black') 
+    self.actionmove=None
     #self.withdraw()
     self.paused=None
-    lines=5
+    lines=6
     #self.buttonwidth=int(self.parent.screenwidth/columns)-5
     #self.buttonheight=int(self.parent.screenheight/lines)-5
     self._mouseAction=None  
@@ -1511,6 +1597,7 @@ class StreamdeckCanvas(Toplevel):
         {"title": "__canvasstop", "command": ["stop"],"icon": "stop.png", "bgColor": "#882222"},               
         {"title": "__canvaszoomplus","command" :["zoomplus"],"icon": "zoomplus.png","bgColor": "#007F22"},
         {"title": "__canvaszoommoins","command" :["zoommoins"],"icon": "zoomminus.png","bgColor": "#007F22"},
+        {"title": "__canvasgoto","command" :["canvasmoveto"],"icon": "gotodisabled.png","bgColor": "#007FFF"},
         {"title":"__canvasleft","command":["canvasleft"],"icon": "chevron_left_circle.png","bgColor": "#007FFF"},
         {"title":"__canvasup","command":["canvasup"],"icon": "chevron_up_circle.png","bgColor": "#007FFF"},
         {"title":"__canvasdown","command":["canvasdown"],"icon": "chevron_down_circle.png","bgColor": "#007FFF"},        
@@ -1529,16 +1616,14 @@ class StreamdeckCanvas(Toplevel):
     self.CanvasButtonsX=self.parent.screenwidth-(self.buttonwidth*columns)-6 
     self.CanvasButtons.place(x=self.CanvasButtonsX,y=0,width=(self.buttonwidth*columns),height=self.parent.screenheight)
     self.CanvasButtons.place_forget()    
-    self.canvas=CNCCanvas.CNCCanvas(self.CanvasFrame, self.app, takefocus=True, background=self.FrameBgColor)
-    
+    self.canvas=CNCCanvas.CNCCanvas(self.CanvasFrame, self.app, takefocus=True, background=self.FrameBgColor)    
     self.canvas.selBbox=self.selBbox
-    #self.CanvasFrame.loadConfig=self.loadConfig
     self.setguicanvas()
     self.app._selectI=0           
     self.canvas.unbind('<Configure>')
     self.canvas.unbind('<Motion>')
     self.canvas.unbind('<Button-1>')
-    self.canvas.bind('<Button-1>',self.canvas.pan)
+    
     #self.canvas.bind('<Button-2>',self.zoomincanvas)
     self.canvas.bind('<B1-Motion>',self.canvas.pan)
     self.canvas.bind('<ButtonRelease-1>',self.canvas.panRelease)
@@ -1565,18 +1650,13 @@ class StreamdeckCanvas(Toplevel):
     self.canvas.unbind('<Control-Key-minus>')
     #self.canvas.place(x=0,y=0,width=self.parent.screenwidth-self.buttonwidth,height=self.parent.screenheight)
     textsize=int((self.parent.GUI.get("fontSize")/1.5)*float(self.parent.screenwidth/1280))
-    self.canvas.place(x=0,y=0,width=self.parent.screenwidth,height=self.parent.screenheight-(textsize+15))
-    
+    self.canvas.place(x=0,y=0,width=self.parent.screenwidth,height=self.parent.screenheight-(textsize+15))    
     x=0
-    cpt=0
-    
-    
+    cpt=0   
     try:          
       textsize=int(int(self.parent.GUI.get("fontSize"))*float(self.parent.screenwidth/1280)*float(item.get("textSize")))          
     except:
-      textsize=int(self.parent.GUI.get("fontSize")*2*float(self.parent.screenwidth/1280))
-    
-    
+      textsize=int(self.parent.GUI.get("fontSize")*2*float(self.parent.screenwidth/1280))    
     self.showmenu=Button(self.CanvasFrame,bd=2,relief="groove",font=tkFont.Font(size=textsize,weight="bold"),padx=0,pady=0,anchor=CENTER,activeforeground="#0000FF",highlightcolor="#FF0000")
     self.showmenu["fg"] = "white"
     self.showmenu["text"] = ">\n\nM\nE\nN\nU\n\n>"
@@ -1584,8 +1664,7 @@ class StreamdeckCanvas(Toplevel):
     self.showmenu["bg"] = "#7f7f7f" 
     self.showmenuX=self.parent.screenwidth-(textsize+6)   
     self.showmenu.place(x=self.showmenuX,y=0,width=textsize+6,height=self.parent.screenheight)
-    self.showmenu["command"]=lambda: self.commande(["showmenu"])
-    
+    self.showmenu["command"]=lambda: self.commande(["showmenu"])    
     y=6
     for item in self.buttoncanvas:      
       item["posx"]=x
@@ -1599,18 +1678,19 @@ class StreamdeckCanvas(Toplevel):
         x+=self.buttonwidth+5
         
     self.mesicones["__canvaspause"]=geticone("pause.png",self.buttonwidth-10,self.buttonheight-10) 
+    self.mesicones["__canvasgotoenabled"]=geticone("gotoenabled.png",self.buttonwidth-10,self.buttonheight-10)
     self.canvasbutton["__canvaszoommoins"]["button"].place_forget()  
     textsize=int((self.parent.GUI.get("fontSize")/1.5)*float(self.parent.screenwidth/1280))
     self.PositionMachine = Label(self, fg=self.parent.GUI.get("titleColor") if self.parent.GUI.get("titleColor") else "#FFFFFF",bg=self.parent.GUI.get("titleBgColor") if self.parent.GUI.get("titleBgColor") else "#000",font=tkFont.Font(size=textsize,weight="bold"),anchor=CENTER,text="")
     self.PositionMachine.place(x=0,y=self.parent.screenheight-(textsize+10),width=self.parent.screenwidth,height=textsize+10)
     
     self.CanvasFrame.update_idletasks()
-    
-    self.app.canvas=self.canvas 
-    
+    self.canvas.drawPath=self.drawPath
+    self.app.canvas=self.canvas     
     self.canvas.draw_workarea=False
     self.canvas.draw_probe=False
-    self.canvas.draw_grid=True 
+    self.canvas.draw_grid=True
+    self.canvas.draw_paths=True
     self.update_idletasks()
     #self.zoomincanvas(None)
     self.pausethread=True
@@ -1620,7 +1700,59 @@ class StreamdeckCanvas(Toplevel):
          
     #self.updatecanvasbuttons()   
     
-    #-----------------------------------------------------------------    
+  def actionGantry(self, event):   
+    u,v,w = self.canvas.image2Machine(event.x,event.y)   
+    self.app.goto(u,v,w)
+   
+  #----------------------------------------------------------------------
+  # Create path for one g command
+  #----------------------------------------------------------------------
+  def drawPath(self, block, cmds):
+    self.canvas.cnc.motionStart(cmds)
+    xyz = self.canvas.cnc.motionPath()
+    self.canvas.cnc.motionEnd()
+    if xyz:
+      self.canvas.cnc.pathLength(block, xyz)
+      if self.canvas.cnc.gcode in (1,2,3):
+        block.pathMargins(xyz)
+        self.canvas.cnc.pathMargins(block)
+      if block.enable:
+        if self.canvas.cnc.gcode == 0 and self.canvas.draw_rapid:
+          xyz[0] = self.canvas._last
+        self.canvas._last = xyz[-1]
+      else:
+        if self.canvas.cnc.gcode == 0:
+          return None
+      coords = self.canvas.plotCoords(xyz)
+      if coords:
+        if block.enable:
+          if block.color:
+            fill = block.color
+          else:
+            fill = CNCCanvas.ENABLE_COLOR
+        else:
+          fill = CNCCanvas.DISABLE_COLOR
+        if self.canvas.cnc.gcode == 0:
+          if self.canvas.draw_rapid:            
+            x,y=coords[0]
+            if (abs(x)==0 and abs(y)==0) or (abs(x)==CNC.vars["wx"] and abs(y)==CNC.vars["wy"]):
+              #print ("retour sans tracage sleep1 ")
+              return None
+               
+            return self.canvas.create_line(coords,
+              fill=fill, width=0, dash=(4,3),tag="paths")
+        elif self.canvas.draw_paths:
+          #print ("sleep2",coords[0])
+          x,y=coords[0]
+          if abs(x)==CNC.vars["wx"] and abs(y)==CNC.vars["wy"]:
+            #print ("retour sans tracage")
+            return None
+          
+          return self.canvas.create_line(coords, fill=fill,
+              width=0, cap="projecting",tag="paths")
+    return None
+  
+  
   # ----------------------------------------------------------------------
   # Return selected objects bounding box
   # ----------------------------------------------------------------------
@@ -1628,9 +1760,10 @@ class StreamdeckCanvas(Toplevel):
   
   def selBbox(self):
     x1 = None
+    
     selection=["sel","sel2","sel3","sel4"]
     if self.myzoom>=0.5:
-      selection=["Grid"]
+      selection=["paths"]
     
     for tag in selection:
       bb = self.canvas.bbox(tag)
@@ -1645,7 +1778,7 @@ class StreamdeckCanvas(Toplevel):
         y2 = max(y2,bb[3])
 
     if x1 is None:
-      return self.canvas.bbox('all')
+      return self.canvas.bbox('paths')
     return x1,y1,x2,y2
   
   def releasemove(self,event):
@@ -1673,8 +1806,13 @@ class StreamdeckCanvas(Toplevel):
     self.jog=('jog' in state)
     self.jogrun=running or jog
     commande=["pause"] if self.app.running else ["run"]
-    icone=self.mesicones.get("__canvaspause") if self.app.running and not self.paused else self.mesicones.get("__canvasplay")
-    
+    icone=self.mesicones.get("__canvasgotoenabled") if self.actionmove else self.mesicones.get("__canvasgoto")
+    if self.actionmove:
+      self.canvas.bind('<Button-1>',self.actionGantry)
+    else:
+      self.canvas.unbind('<Button-1>')
+    self.canvasbutton.get("__canvasgoto")["button"].configure(image=icone) 
+    icone=self.mesicones.get("__canvaspause") if self.app.running and not self.paused else self.mesicones.get("__canvasplay")    
     self.canvasbutton.get("__canvasplay")["button"].configure(image=icone) 
     self.canvasbutton.get("__canvasplay")["button"].configure(command=lambda: self.commande(commande))
     self.PositionMachine.configure(text="(%s) --- Machine X:%s Y:%s Z:%s       ---      Work X:%s Y:%s Z:%s" %(CNC.vars["state"],"{: 9.3f}".format(CNC.vars["mx"]),"{: 9.3f}".format(CNC.vars["my"]),"{: 9.3f}".format(CNC.vars["mz"]),"{: 9.3f}".format(CNC.vars["wx"]),"{: 9.3f}".format(CNC.vars["wy"]),"{: 9.3f}".format(CNC.vars["wz"])))
@@ -1689,9 +1827,10 @@ class StreamdeckCanvas(Toplevel):
       self.showhide("__canvasstop",True)
     else:
       self.showhide("__canvasstop",None)
-    if self.alarm:
-      
+    if self.alarm:      
       self.returnstreamdeck(Alarm=True)
+    
+      
       
             
   def addbutton(self,item=None,posx=None,posy=None):    
@@ -1743,13 +1882,19 @@ class StreamdeckCanvas(Toplevel):
   def commande(self,commande=None):
     
     CMD=commande[0].lower()
-    zoomx,zoomy=self.currentzoomxy    
+    zoomx,zoomy=self.currentzoomxy 
+       
     if 'zoomplus'==CMD:      
       self.myzoom=self.myzoom+0.25
       self.canvas.menuZoomIn()
       self.canvas.update_idletasks()
       self.centerview()  
       self.showhide("__canvaszoommoins",True)
+    elif 'canvasmoveto'==CMD:
+      if self.actionmove:
+        self.actionmove=None
+      else:
+        self.actionmove=True
     elif 'showmenu'==CMD:
       if not self.viewmenu:
         self.showmenu.place(x=self.CanvasButtonsX-self.showmenu.winfo_width(),y=0)
@@ -1787,10 +1932,7 @@ class StreamdeckCanvas(Toplevel):
       self.viewmenu=None
       self.returnstreamdeck()
     elif 'zoomreset'==CMD:      
-      #x = int(self.canvas.cget("width" ))//2
-      #y = int(self.canvas.cget("height"))//2
-      #self.canvas.zoomCanvas(x, y, 0.5)
-      #self.canvas.update_idletasks()
+     
       self.myzoom=1
       self.canvas.reset()
       self.canvas.fit2Screen()
@@ -1835,6 +1977,7 @@ class StreamdeckCanvas(Toplevel):
               i=0
     self.canvas.configure(borderwidth = 0)
     self.canvas.configure(highlightthickness = 0)
+    self.canvas.update()
      
   def returnstreamdeck(self,Alarm=None):
     
@@ -1902,78 +2045,501 @@ class StreamdeckCanvas(Toplevel):
     self.canvas.yview_moveto(midy-d)
     self.canvas.clearSelection()
     
-  def loadConfig(self):
-    
-    
-    
-    
-    CNCCanvas.DRAW_TIME     = Utils.getInt("Canvas", "drawtime",     CNCCanvas.DRAW_TIME)
-    CNCCanvas.INSERT_COLOR  = Utils.getStr("Color","canvas.insert", CNCCanvas.INSERT_COLOR)
-    CNCCanvas.GANTRY_COLOR  = Utils.getStr("Color","canvas.gantry", CNCCanvas.GANTRY_COLOR)
-    CNCCanvas.MARGIN_COLOR  = Utils.getStr("Color","canvas.margin", CNCCanvas.MARGIN_COLOR)
-    CNCCanvas.GRID_COLOR    = Utils.getStr("Color","canvas.grid", CNCCanvas.GRID_COLOR)
-    CNCCanvas.BOX_SELECT    = Utils.getStr("Color","canvas.selectbox",CNCCanvas.BOX_SELECT)
-    CNCCanvas.ENABLE_COLOR  = Utils.getStr("Color","canvas.enable", CNCCanvas.ENABLE_COLOR)
-    CNCCanvas.DISABLE_COLOR = Utils.getStr("Color","canvas.disable",CNCCanvas.DISABLE_COLOR)
-    CNCCanvas.SELECT_COLOR  = Utils.getStr("Color","canvas.select", CNCCanvas.SELECT_COLOR)
-    CNCCanvas.SELECT2_COLOR = Utils.getStr("Color","canvas.select2",CNCCanvas.SELECT2_COLOR)
-    CNCCanvas.PROCESS_COLOR = Utils.getStr("Color","canvas.process",CNCCanvas.PROCESS_COLOR)
-    CNCCanvas.MOVE_COLOR    = Utils.getStr("Color","canvas.move", CNCCanvas.MOVE_COLOR)
-    CNCCanvas.RULER_COLOR   = Utils.getStr("Color","canvas.ruler", CNCCanvas.RULER_COLOR)
-    CNCCanvas.CAMERA_COLOR  = Utils.getStr("Color","canvas.camera", CNCCanvas.CAMERA_COLOR)
-    CNCCanvas.PROBE_TEXT_COLOR = Utils.getStr("Color","canvas.probetext", CNCCanvas.PROBE_TEXT_COLOR)
-    CNCCanvas.CANVAS_COLOR  = Utils.getStr("Color","canvas.background", CNCCanvas.CANVAS_COLOR)
-    
-  """
-  def _zoomCanvas(self): #x, y, zoom):
-    x = self.canvas._tx
-    y = self.canvas._ty
-    zoom = self.tzoom
-
-    #def zoomCanvas(self, x, y, zoom):
-    self.tzoom = 1.0
-
-    self.canvas.zoom *= zoom
-
-    x0 = self.canvas.canvasx(0)
-    y0 = self.canvas.canvasy(0)
-
-    for i in self.canvas.find_all():
-      self.canvas.scale(i, 0, 0, zoom, zoom)
-
-    # Update last insert
-    if self.canvas._lastGantry:
-      self.canvas._drawGantry(*self.canvas.plotCoords([self.canvas._lastGantry])[0])
-    else:
-      self.canvas._drawGantry(0,0)
-
-    self.canvas._updateScrollBars()
-    x0 -= self.canvas.canvasx(0)
-    y0 -= self.canvas.canvasy(0)
-
-    # Perform pin zoom
-    dx = self.canvas.canvasx(x) * (1.0-zoom)
-    dy = self.canvas.canvasy(y) * (1.0-zoom)
-
-    # Drag to new location to center viewport
-    self.canvas.scan_mark(0,0)
-    self.canvas.scan_dragto(int(round(dx-x0)), int(round(dy-y0)), 1)
-
-    # Resize probe image if any
-    if self.canvas._probe:
-      self.canvas._projectProbeImage()
-      self.canvas.itemconfig(self.canvas._probe, image=self.canvas._probeTkImage)
   
- 
+#==============================================================================
+# STREAMDECKCANVASDEP
+#==============================================================================    
+class StreamdeckCanvasDep(Toplevel):
+   
+  def __init__(self, root,app,parent):
+    self.app = app
+    self.root=root
+    self.parent=parent
+    self.GUI=self.parent.GUI
+    self._showmouseposition=None
+    self.maxx=CNC.travel_x
+    self.maxy=CNC.travel_y
+    self.minx=0
+    self.miny=0
+    self.mesicones={}
+    self.viewmenu=None
+    self.canvasgui=None
+    self.canvasbutton={}
+    self.myzoom=1
+    self.FrameBgColor=parent.GUI.get("bgColor") if parent.GUI.get("bgColor") else "#000000"    
+    super().__init__(master = root) 
+    self.attributes('-fullscreen', True)
+    self.configure(bg='black') 
+    self.config(cursor="cross")
+    lines=5
+    self.buttoncanvas=[
+        {"title":"__canvasback","command":["return"],"icon": "backward.png","bgColor": "#FF2222"}, 
+        {"title": "homing","command": ["homing"],"icon": "home_door.png","bgColor": 8},
+        {"title": "__canvaszoomplus","command" :["zoomplus"],"icon": "zoomplus.png","bgColor": "#007F22"},
+        {"title": "__canvaszoommoins","command" :["zoommoins"],"icon": "zoomminus.png","bgColor": "#007F22"},
+        {"title": "__canvaszoomreset","command" :["zoomreset"],"icon": "zoomreset.png","bgColor": "#007F22"},
+        {"title": "__canvasstop", "command": ["stop"],"icon": "stop.png", "bgColor": "#882222"},          
+        {"title":"__canvasleft","command":["canvasleft"],"icon": "chevron_left_circle.png","bgColor": "#007FFF"},
+        {"title":"__canvasup","command":["canvasup"],"icon": "chevron_up_circle.png","bgColor": "#007FFF"},
+        {"title":"__canvasdown","command":["canvasdown"],"icon": "chevron_down_circle.png","bgColor": "#007FFF"},        
+        {"title":"__canvasright","command":["canvasright"],"icon": "chevron_right_circle.png","bgColor": "#007FFF"},         
+        
+          ]
+    columns=math.ceil(len(self.buttoncanvas)/lines)  
+    self.buttonwidth=int((int(self.parent.screenwidth/(len(self.buttoncanvas)/columns))-5)/2)
+    self.buttonheight=int(self.parent.screenheight/lines)-10      
+    self.CanvasFrame=Canvas(self,bd=0,width=self.parent.screenwidth,height=self.parent.screenheight,background=self.FrameBgColor,borderwidth = 0, highlightthickness = 0) 
+    self.CanvasFrame.place(x=0,y=0,width=self.parent.screenwidth,height=self.parent.screenheight)
+    self.CanvasButtons=Canvas(self,bd=0,width=self.parent.screenwidth,height=self.parent.screenheight,background=self.FrameBgColor,borderwidth = 0, highlightthickness = 0)
+    self.CanvasButtonsX=self.parent.screenwidth-(self.buttonwidth*columns)-6 
+    self.CanvasButtons.place(x=self.CanvasButtonsX,y=0,width=(self.buttonwidth*columns),height=self.parent.screenheight)
+    self.CanvasButtons.place_forget()    
+    self.canvas=CNCCanvas.CNCCanvas(self.CanvasFrame, self.app, takefocus=True, background=self.FrameBgColor)    
+    self.canvas.drawGrid=self.drawGrid
+    self.canvas.selBbox=self.selBbox
+    
+    self.canvas.gantry=self.gantry
+    self.setguicanvas()
+    self.app._selectI=0           
+    self.canvas.unbind('<Configure>')
+    self.canvas.unbind('<Motion>')
+    self.canvas.unbind('<Button-1>')  
+    self.canvas.unbind('<B1-Motion>' ) 
+    self.canvas.unbind('<ButtonRelease-1>')
+    #self.canvas.bind('<B1-Motion>',self.canvas.pan)
+    self.canvas.bind('<Button-1>',self.showmouseposition) 
+    self.canvas.bind('<ButtonRelease-1>',self.actionGantry)
+    self.canvas.unbind('<Double-1>')
+    self.canvas.unbind("<Button-4>")
+    self.canvas.unbind("<Button-5>")
+    self.canvas.unbind("<MouseWheel>")
+    self.canvas.unbind('<Shift-Button-4>')
+    self.canvas.unbind('<Shift-Button-5>')
+    self.canvas.unbind('<Control-Button-4>')
+    self.canvas.unbind('<Control-Button-5>')
+    self.canvas.unbind('<Control-Key-Left>')
+    self.canvas.unbind('<Control-Key-Right>')
+    self.canvas.unbind('<Control-Key-Up>')
+    self.canvas.unbind('<Control-Key-Down>')
+    self.canvas.unbind('<Escape>')
+    self.canvas.unbind('<Key>')
+    self.canvas.unbind('<Control-Key-S>')
+    self.canvas.unbind('<Control-Key-t>')
+    self.canvas.unbind('<Control-Key-equal>')
+    self.canvas.unbind('<Control-Key-minus>')
+    textsize=int((self.parent.GUI.get("fontSize")/1.5)*float(self.parent.screenwidth/1280))
+    self.canvas.place(x=0,y=0,width=self.parent.screenwidth,height=self.parent.screenheight-(textsize+15))    
+    x=0
+    cpt=0   
+    try:          
+      textsize=int(int(self.parent.GUI.get("fontSize"))*float(self.parent.screenwidth/1280)*float(item.get("textSize")))          
+    except:
+      textsize=int(self.parent.GUI.get("fontSize")*2*float(self.parent.screenwidth/1280))    
+    self.showmenu=Button(self.CanvasFrame,bd=2,relief="groove",font=tkFont.Font(size=textsize,weight="bold"),padx=0,pady=0,anchor=CENTER,activeforeground="#0000FF",highlightcolor="#FF0000")
+    self.showmenu["fg"] = "white"
+    self.showmenu["text"] = ">\n\nM\nE\nN\nU\n\n>"
+    self.showmenu["justify"] = "center"
+    self.showmenu["bg"] = "#7f7f7f" 
+    self.showmenuX=self.parent.screenwidth-(textsize+6)   
+    self.showmenu.place(x=self.showmenuX,y=0,width=textsize+6,height=self.parent.screenheight)
+    self.showmenu["command"]=lambda: self.commande(["showmenu"])    
+    y=6
+    for item in self.buttoncanvas:      
+      item["posx"]=x
+      item["posy"]=y
+      self.addbutton(item=item,posx=x,posy=y)
+      cpt=cpt+1
+      y=y+6+self.buttonheight
+      if cpt>=lines or y>=self.parent.screenheight:        
+        cpt=0
+        y=6
+        x+=self.buttonwidth+5
+        
+    self.mesicones["__canvaspause"]=geticone("pause.png",self.buttonwidth-10,self.buttonheight-10) 
+    self.mesicones["__canvasgotoenabled"]=geticone("gotoenabled.png",self.buttonwidth-10,self.buttonheight-10)
+    self.canvasbutton["__canvaszoommoins"]["button"].place_forget()  
+    textsize=int((self.parent.GUI.get("fontSize")/1.5)*float(self.parent.screenwidth/1280))
+    self.PositionMachine = Label(self, fg=self.parent.GUI.get("titleColor") if self.parent.GUI.get("titleColor") else "#FFFFFF",bg=self.parent.GUI.get("titleBgColor") if self.parent.GUI.get("titleBgColor") else "#000",font=tkFont.Font(size=textsize,weight="bold"),anchor=CENTER,text="")
+    self.PositionMachine.place(x=0,y=self.parent.screenheight-(textsize+10),width=self.parent.screenwidth,height=textsize+10)
+    
+    self.app.canvas=self.canvas     
+    self.canvas.draw_workarea=False
+    self.canvas.draw_probe=False
+    self.canvas.draw_grid=True
+    self.canvas.draw_paths=False
+    self.canvas.draw_axes=False
+    self.update_idletasks()
+    self.pausethread=True
+    self.updatethread=threading.Timer(0.5,self.threadloop)
+    self.updatethread.daemon = True
+    self.updatethread.start()
+    
+  def showmouseposition(self,event):
+    self._showmouseposition=True 
+    
+       
+  def gantry(self, wx, wy, wz, mx, my, mz):
+    self.canvas._lastGantry = (mx,my,mz)
+    
+    if "e" in self.parent.GUI.get("homePosition").lower():
+      if mx<CNC.travel_x:
+        mx=mx+CNC.travel_x
+    if "n" in self.parent.GUI.get("homePosition").lower():
+      if mx<CNC.travel_y:
+        my=my+CNC.travel_y
+    
+    self.canvas._dx = mx
+    self.canvas._dy = my
+    self.canvas._dz = mz
+    self.canvas._drawGantry(*self.canvas.plotCoords([(mx,my,mz)])[0])
+    
+  def convertcoords(self,u=0,v=0):
+    self.maxx=CNC.travel_x
+    self.maxy=CNC.travel_y
+    self.minx=0
+    self.miny=0
+    if "e" in self.parent.GUI.get("homePosition").lower():
+      u=-(CNC.travel_x-u)
+      self.maxx=0
+      self.minx=-CNC.travel_x
+    if "n" in self.parent.GUI.get("homePosition").lower():  
+      v=-(CNC.travel_y-v)
+      self.maxy=0
+      self.miny=-CNC.travel_y 
+    return u,v
+       
+  def actionGantry(self, event):
+    self._showmouseposition=None   
+    u,v,w = self.canvas.image2Machine(event.x,event.y)
+    u,v=self.convertcoords(u=u,v=v)   
+    cmdcode="G53 X%.3f Y%.3f" %(u,v) 
+    #print (maxx,maxy,)   
+    if u<=self.maxx and v<=self.maxy and u>=self.minx and v>=self.miny:   
+      self.app.control.sendGCode("%s" %cmdcode) 
+      
+    
+  
+  def drawGrid(self):
+    self.canvas.delete("Grid")
+    self.canvas.delete("AxesXY")
+    if not self.canvas.draw_grid: return    
+    xmin = 0 #(self.canvas._dx//10)  *10
+    xmax = (CNC.travel_x//10+1)*10
+    ymin = 0 #(self.canvas._dy//10)  *10
+    ymax = (CNC.travel_y//10+1)*10
+    for i in range(0, int(CNC.travel_y//10)+2):
+      y = i*10.0
+      dash=(1,3)
+      if i==((CNC.travel_y//10)//2):
+        width=2
+        dash=None
+      else:
+        width=1
+      xyz = [(xmin,y,0), (xmax,y,0)]
+      item = self.canvas.create_line(self.canvas.plotCoords(xyz),
+            tag="Grid",
+            fill=CNCCanvas.GRID_COLOR,
+            dash=dash,width=width)
+      self.canvas.tag_lower(item)
+    for i in range(0, int(CNC.travel_x//10)+2):
+      x = i*10.0
+      dash=(1,3)
+      if i==((CNC.travel_x//10)//2):
+        width=2
+        dash=None
+      else:
+        width=1
+      xyz = [(x,ymin,0), (x,ymax,0)]
+      item = self.canvas.create_line(self.canvas.plotCoords(xyz),
+            fill=CNCCanvas.GRID_COLOR,
+            tag="Grid",
+            dash=dash,width=width)
+      self.canvas.tag_lower(item)
+     
+    dx = CNC.travel_x - self.canvas._dx
+    dy = CNC.travel_y - self.canvas._dy  
+    d = min(dx,dy)
+    try:
+      s = math.pow(10.0, int(math.log10(d)))
+    except:
+      if CNC.inch:
+        s = 10.0
+      else:
+        s = 100.0
+        
+    #AXES
+   
+    xyz = [(-1.,-1.,0.), (CNC.travel_x+1, -1., 0.)]
+    self.canvas.create_line(self.canvas.plotCoords(xyz), tag="AxesXY", fill="white", dash=(8,4), arrow=LAST)
+    xyz = [(-1.,-1.,0.), ((-1+CNC.travel_x)/2, -1., 0.)]
+    self.canvas.create_text(self.canvas.plotCoords(xyz)[1],text=CNC.travel_x,font=tkFont.Font(size=20,weight="bold"),fill="#FF00FF",tag="AxesXY")   
+
+    xyz = [(-1.,-1.,0.), (-1., CNC.travel_y+1, 0.)]
+    self.canvas.create_line(self.canvas.plotCoords(xyz), tag="AxesXY", fill="White", dash=(8,4), arrow=LAST)
+    xyz = [(-1.,-1.,0.), (-1., (-1+CNC.travel_y)/2, 0.)]
+   
+    self.canvas.create_text(self.canvas.plotCoords(xyz)[1],text=CNC.travel_y,font=tkFont.Font(size=20,weight="bold"),angle=90,fill="#FF00FF",tag="AxesXY")
     
     
-   
  
-   
-  def changeColor(self,item=None,tag=None,colorfill=None,outlinecolor=None):
-    if item:
-      self.canvas.itemconfig(item,fill=colorfill,outline=outlinecolor)
+  #----------------------------------------------------------------------
+  # Create path for one g command
+  #----------------------------------------------------------------------
+  def drawPath(self, block, cmds):
+    
+    return None
+  
+  
+  # ----------------------------------------------------------------------
+  # Return selected objects bounding box
+  # ----------------------------------------------------------------------
+  
+
+  
+    
+  def threadloop(self):
+    while True:
+      try:
+        if not self.pausethread:
+          self.updatecanvasbuttons()
+      except:
+        i=0
+      time.sleep(0.1)
+        
+  def updatecanvasbuttons(self):
+    
+    state=CNC.vars["state"].lower()
+    self.jog=('jog' in state) 
+    self.connected=not "not connected" in CNC.vars["state"].lower()
+    self.alarm=('alarm' in state)
+    self.idle=('idle' in state)    
+    self.hold=('hold' in state)
+    self.running=(('run' in state) and not hold) or (CNC.vars["running"])
+    self.locked=alarm    
+    self.jog=('jog' in state)
+    self.jogrun=running or jog
+    if not self._showmouseposition:
+      self.PositionMachine.configure(text="(%s) --- Machine X:%s Y:%s Z:%s       ---      Work X:%s Y:%s Z:%s" %(CNC.vars["state"],"{: 9.3f}".format(CNC.vars["mx"]),"{: 9.3f}".format(CNC.vars["my"]),"{: 9.3f}".format(CNC.vars["mz"]),"{: 9.3f}".format(CNC.vars["wx"]),"{: 9.3f}".format(CNC.vars["wy"]),"{: 9.3f}".format(CNC.vars["wz"])))
     else:
-      for i in self.canvas.find_withtag(tag):
-        self.canvas.itemconfig(i, fill=colorfill,outline=outlinecolor)
-  """
+      u,v,w = self.canvas.image2Machine(self.winfo_pointerx(),self.winfo_pointery())
+      x,y=self.convertcoords(u=u,v=v)
+      if x<=self.maxx and y<=self.maxy and x>=self.minx and y>=self.miny:        
+        self.PositionMachine.configure(text="Release button to Go to X{: 9.3f} / Y{: 9.3f}".format(x,y))
+      else:
+        self.PositionMachine.configure(text="OUT OF MACHINE !!!!")
+      
+    if self.myzoom<=0.25:
+        self.showhide("__canvaszoommoins",None)
+        self.showhide("__canvaszoomreset",None)
+    else:
+        self.showhide("__canvaszoommoins",True)
+        self.showhide("__canvaszoomreset",True)
+        
+    if self.alarm:      
+      self.returnstreamdeck(Alarm=True)
+    
+      
+      
+            
+  def addbutton(self,item=None,posx=None,posy=None):    
+    if item:     
+      
+      try:
+        textColor=self.parent.palette[int(item.get("textColor"))]
+      except:
+        if item.get("textColor") and '#'==item.get("textColor")[0]:
+          textColor=item.get("textColor")
+        else:
+          textColor=self.parent.GUI.get("textColor")
+      try:          
+        textsize=int(int(self.parent.GUI.get("fontSize"))*float(self.parent.screenwidth/1280)*float(item.get("textSize")))          
+      except:
+        textsize=int(self.parent.GUI.get("fontSize")*float(self.parent.screenwidth/1280))
+      try:
+        bgColor=self.parent.palette[int(item.get("bgColor"))]
+      except:
+        if item.get("bgColor") and '#'==item.get("bgColor")[0]:
+          bgColor=item.get("bgColor")
+        else:
+          bgColor=self.FrameBgColor
+      NewButton=Button(self.CanvasButtons,relief="groove",bd=2,padx=0,pady=0,anchor=CENTER,wraplength=self.buttonwidth-10,activeforeground="#0000FF",activebackground=bgColor,highlightcolor="#FF0000")
+      NewButton["bg"] = bgColor
+      if item.get("icon"): 
+        self.mesicones[item.get("title")]=geticone(item.get("icon"),self.buttonwidth-10,self.buttonheight-10) 
+        NewButton["image"]=self.mesicones[item.get("title")]
+      if item.get("command"):
+        NewButton["command"]=  lambda: self.commande(item.get("command"))
+      
+      NewButton["fg"] = textColor
+      NewButton["justify"] = "center"
+      NewButton.place(x=posx,y=posy,width=self.buttonwidth,height=self.buttonheight)
+      self.canvasbutton[item.get("title")]={"button":NewButton,"posx":posx,"posy":posy}
+      
+    
+    #-----------------------------------------------------------------
+  def showhide(self,bouton=None,Enable=True):
+    if bouton:
+      if Enable:
+        self.canvasbutton[bouton]["button"].place(x=self.canvasbutton[bouton]["posx"],y=self.canvasbutton[bouton]["posy"]) 
+      else:
+        self.canvasbutton[bouton]["button"].place_forget()
+    
+  
+  def commande(self,commande=None):
+    
+    CMD=commande[0].lower()
+       
+    if 'zoomplus'==CMD:      
+      self.myzoom=self.myzoom+0.25
+      self.canvas.menuZoomIn()
+      self.canvas.update_idletasks()
+      self.centerview()  
+      self.showhide("__canvaszoommoins",True)    
+    elif 'showmenu'==CMD:
+      if not self.viewmenu:
+        self.showmenu.place(x=self.CanvasButtonsX-self.showmenu.winfo_width(),y=0)
+        self.CanvasButtons.place(x=self.CanvasButtonsX,y=0)
+        self.viewmenu=True
+      else:
+        self.showmenu.place(x=self.showmenuX,y=0)
+        self.CanvasButtons.place_forget()
+        self.viewmenu=None
+    elif 'zoommoins'==CMD:
+      if self.myzoom>0:
+        self.myzoom=self.myzoom-0.25
+        if self.myzoom>0:
+          self.canvas.menuZoomOut()
+          self.canvas.update_idletasks()
+          self.centerview()
+        else:
+          self.myzoom=0.25
+        
+      if self.myzoom<=1:
+        self.showhide("__canvaszoommoins",None)
+    elif 'canvasright'==CMD:
+        self.canvas.panRight()             
+    elif 'canvasleft'==CMD:
+        self.canvas.panLeft()
+    elif 'canvasdown'==CMD:   
+        self.canvas.panDown()
+    elif 'canvasup'==CMD:
+        self.canvas.panUp()                
+    elif 'return'==CMD:      
+      self.CanvasButtons.place(x=self.parent.screenwidth,y=0)
+      self.CanvasButtons.update()
+      self.showmenu.place(x=self.showmenuX,y=0)
+      self.showmenu.update()
+      self.viewmenu=None
+      self.returnstreamdeck()
+    elif 'zoomreset'==CMD:     
+      self.myzoom=1
+      self.canvas.reset()
+      self.canvas.fit2Screen()
+      self.canvas.update()      
+      self.showhide("__canvaszoommoins",None)
+    elif "homing"==CMD and not self.jogrun:
+      showMessage(self,Message="Homing...",timeout=1500)
+      self.app.home()
+    elif "stop"==CMD:
+      self.app.stopRun()
+      self.app.home()
+    
+    
+  def setguicanvas(self):
+    if self.parent.canvasgui:
+      if self.parent.canvasgui.get("toolcolor"):
+        CNCCanvas.GANTRY_COLOR=self.parent.canvasgui.get("toolcolor")
+      if self.parent.canvasgui.get("gridcolor"):
+        CNCCanvas.GRID_COLOR=self.parent.canvasgui.get("gridcolor")
+      if self.parent.canvasgui.get("pathcolor"):
+        CNCCanvas.ENABLE_COLOR=self.parent.canvasgui.get("pathcolor")
+      if self.parent.canvasgui.get("runcolor"):
+        CNCCanvas.PROCESS_COLOR=self.parent.canvasgui.get("runcolor")
+      if self.parent.canvasgui.get("maxdrawtime"):
+        CNCCanvas.DRAW_TIME=self.parent.canvasgui.get("maxdrawtime")
+      if self.parent.canvasgui.get("bgcolor"):
+        CNCCanvas.CANVAS_COLOR=self.parent.canvasgui.get("bgcolor")
+      if self.parent.canvasgui.get("toolsize"):
+        try:
+          CNC.vars["diameter"]=float(self.parent.canvasgui.get("toolsize"))
+        except:
+          i=0
+            
+    self.canvas.configure(background="#333")
+    self.canvas.configure(borderwidth = 0)
+    self.canvas.configure(highlightthickness = 0)
+    self.canvas.update()
+   
+     
+  def returnstreamdeck(self,Alarm=None):
+    
+    self.parent.getstreamdeck().showScene(None,None,True)
+    self.parent.getstreamdeck().hidecanvas(Alarm) 
+    
+  
+    
+
+
+   
+   # ----------------------------------------------------------------------
+  # Zoom on screen position x,y by a factor zoom
+  # ----------------------------------------------------------------------
+  def centerview(self):
+    self.app._selectI=0
+    
+    xmin = (CNC.vars["axmin"]//10)  *10
+    xmax = (CNC.vars["axmax"]//10+1)*10
+    ymin = (CNC.vars["aymin"]//10)  *10
+    ymax = (CNC.vars["aymax"]//10+1)*10
+    closest = self.canvas.find_overlapping(
+              int(xmin),
+              int(ymin),
+              int(xmax),
+              int(ymax))
+    items = []
+    
+    for i in self.canvas._items:
+          try: items.append(self.canvas._items[i])
+          except: pass
+        
+    self.canvas.select(items)
+    x1,y1,x2,y2 = self.canvas.selBbox()
+    xm = (x1+x2)//2
+    ym = (y1+y2)//2
+    sx1,sy1,sx2,sy2 = map(float,self.canvas.cget("scrollregion").split())
+    midx = float(xm-sx1) / (sx2-sx1)
+    midy = float(ym-sy1) / (sy2-sy1)
+    a,b = self.canvas.xview()
+    d = (b-a)/2.0
+    self.canvas.xview_moveto(midx-d)
+    a,b = self.canvas.yview()
+    d = (b-a)/2.0
+    self.canvas.yview_moveto(midy-d)
+    self.canvas.clearSelection()
+    
+  
+  def selBbox(self):
+    x1 = None
+    
+    selection=["sel","sel2","sel3","sel4"]
+    selection=["Grid"]
+    
+    for tag in selection:
+      bb = self.canvas.bbox(tag)
+      if bb is None:
+        continue
+      elif x1 is None:
+        x1,y1,x2,y2 = bb
+      else:
+        x1 = min(x1,bb[0])
+        y1 = min(y1,bb[1])
+        x2 = max(x2,bb[2])
+        y2 = max(y2,bb[3])
+
+    if x1 is None:
+      return self.canvas.bbox('Grid')
+    return x1,y1,x2,y2
+   
+
+
+  
