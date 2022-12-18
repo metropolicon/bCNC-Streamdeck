@@ -14,6 +14,7 @@ Based on this excellent interface for CNCjs : [Stream Deck and mobile web pendan
 ![Stream Deck device with buttons with buttons for CNC ](https://i.imgur.com/rtAGxuj.jpg)
 ![Stream Deck device with buttons with buttons for CNC ](https://i.imgur.com/0SAgXLg.jpg)
 ![Stream Deck device with buttons with buttons for CNC ](https://i.imgur.com/5R0FAId.jpg)
+![Stream Deck device with buttons with buttons for CNC ](https://i.imgur.com/FoI7eFe.png)
 
 ## Compatibility
 
