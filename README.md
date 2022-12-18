@@ -49,6 +49,9 @@ launch bCNC as usually .... (python -m bCNC or your other command )
 ## DOCUMENTATION
 later, i'll can make a tutorial for options and commands....
 
+## LAST UPDATE
 
+Bug corrections
+Add move to mouse click position (see in streamdeck.json , the 'gotomouse' button )
 
 enjoy ;)
