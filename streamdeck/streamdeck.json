@@ -8,7 +8,7 @@
       
     "macros":{
 "zprobe":["G21","G91","G38.2 Z-100 F190","G0 Z2","G38.2 Z-100 F45","G4 P0.1","G10 L20 P1 Z{{VAR0}}","G4 P0.1","G0 Z15","G90"],
-"zxyprobe":["G21","G91","G38.2 Z-25 F190","G0 Z2","G38.2 Z-25 F45","G4 P0.1","G10 L20 P1 Z{{VAR0}}","G4 P0.1","G0 Z3","G0 X-45","G0 Z-10","G38.2 X45 F190","G0 X-2","G38.2 X45 F45","G4 P0.1","G10 L20 P1 X{{VAR1-(TOOLD/2)}}","G4 P0.1","G0 X-1 Y-1 Z20","G91","G0 X25 Y-45","G0 Z-20","G38.2 Y45 F190","G0 Y-2","G38.2 Y45 F45","G4 P0.1","G10 L20 P1 Y{{VAR2-(TOOLD/2)}}","G4 P0.1","G0 Y-10","G0 Z10","G90","G0 X0Y0"],
+"zxyprobe":["G21","G91","G38.2 Z-45 F190","G0 Z2","G38.2 Z-25 F45","G4 P0.1","G10 L20 P1 Z{{VAR0}}","G4 P0.1","G0 Z3","G0 X-45","G0 Z-10","G38.2 X45 F190","G0 X-2","G38.2 X45 F45","G4 P0.1","G10 L20 P1 X{{VAR1-(TOOLD/2)}}","G4 P0.1","G0 X-1 Y-1 Z20","G91","G0 X25 Y-45","G0 Z-20","G38.2 Y45 F190","G0 Y-2","G38.2 Y45 F45","G4 P0.1","G10 L20 P1 Y{{VAR2-(TOOLD/2)}}","G4 P0.1","G0 Y-10","G0 Z10","G90","G0 X0Y0"],
   
                       
 "laseron":["G1F1","M3S300","G4P5","M5S0"],
@@ -762,7 +762,7 @@
         "probelaser": {
             "title": "probelaser",
             "command": [
-                ["macro","Zprobe",11.5]
+                ["macro","Zprobe",-6.5]
             ],
             "icon": "zprobelaser.png",
             "texte": "Hauteur du Laser",
