@@ -53,6 +53,7 @@ later, i'll can make a tutorial for options and commands....
 ## LAST UPDATE (2022-12-18)
 
 Bug corrections
+
 Add move to mouse click position (see in streamdeck.json , the 'gotomouse' button )
 
 Add probe zxy macro with enter tool diameter....( see the 'probe_zxy' button )
