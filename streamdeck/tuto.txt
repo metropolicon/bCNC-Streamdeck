@@ -1,3 +1,35 @@
+définition d'un bouton :
+parametres :
+"title": "goZeroZ" = nom du bouton
+"command": ["gcode",["G0 Z0"]] =  commandes....selon la commande peut être suivi d'une liste de parametre comme ici pour envoyer du gcode
+"icon": "arrow_0.png" = image du bouton dans le repertoire  bCNC\streamdeck\icons
+"texte": "Aller au Z0" = texte du bouton ( peut inclure une variable dans le format {{ variable }})
+"bgColor": 6 =  couleur de fond  du bouton  sous la forme HTML (#xxx ou #xxxxxx) ou numéro index (0 à ...) dans la palette (voir plus haut)
+"textColor": 0  = comme pour la couleur de fond           
+"textSize": 1.3 = ratio de la taille du texte par rapport à "fontSize"
+"condition":"!cnc.alarm and !cnc.running" = condition de visibilité du bouton "!"=not "&&"=and "||"=or - ici visible si pas d'alarme et pas d'execution de gcode en cours
+
+exemple :
+
+
+"goZeroZ": {
+            "title": "goZeroZ",
+            "command": [
+                "gcode",
+                [
+                    "G0 Z0"
+                ]
+            ],
+            "icon": "arrow_0.png",
+            "texte": "Aller au Z0",
+            "bgColor": 6
+        },
+
+
+
+
+
+
 {
     "connection":{
       "port":"COM3",
@@ -5,12 +37,11 @@
       "grbl":"GRBL1"
     },
     
-      
-    "macros":{
+les macros : 
+nom de la macro : [séquences de gcode séparées par des virgules]  
+
+    "macros":{ 
 "zprobe":["G21","G91","G38.2 Z-100 F190","G0 Z2","G38.2 Z-100 F45","G4 P0.1","G10 L20 P1 Z{{VAR0}}","G4 P0.1","G0 Z15","G90"],
-"zxyprobe":["G21","G91","G38.2 Z-45 F190","G0 Z2","G38.2 Z-25 F45","G4 P0.1","G10 L20 P1 Z{{VAR0}}","G4 P0.1","G0 Z3","G0 X-45","G0 Z-10","G38.2 X45 F190","G0 X-2","G38.2 X45 F45","G4 P0.1","G10 L20 P1 X{{VAR1-(TOOLD/2)}}","G4 P0.1","G0 X-1 Y-1 Z20","G91","G0 X25 Y-45","G0 Z-20","G38.2 Y45 F190","G0 Y-2","G38.2 Y45 F45","G4 P0.1","G10 L20 P1 Y{{VAR2-(TOOLD/2)}}","G4 P0.1","G0 Y-10","G0 Z10","G90","G0 X0Y0"],
-  
-                      
 "laseron":["G1F1","M3S300","G4P5","M5S0"],
 "laseroff":["M5S0"]
 },
@@ -25,7 +56,7 @@
         "lines": 3,
         "font": "arial",
         "fontSize": 18,
-        "homePosition":"NE",        
+        "homePosition":"SO",        
         "palette": [
             "#000000",
             "#bdc3c7",
@@ -67,7 +98,7 @@
                 ],
                 [
                     "reboot",
-                    "speedScene","connectScene","bcnc","exitbcnc"
+                    "speedScene","connectScene","bcnc","exit"
                 ],
                 [
                     "homing",
@@ -82,7 +113,7 @@
         "jog": {
             "buttons": [
                 [
-                    "back",["jogYPlus","holdpause"],"gotomouse","jogDistanceUpZ","jogZPlus"
+                    "back",["jogYPlus","holdpause"],"zeroScene","jogDistanceUpZ","jogZPlus"
                 ],
                 [
                     "jogXMinus","jogDistanceXY","jogXPlus","machinePosition","jogDistanceZ"
@@ -233,20 +264,20 @@
                     "back",
                     "wcsXLabel",
                     "wcsYLabel",
-                    "wcsZLabel"
-                    
+                    "wcsZLabel",
+                    "probe_z"
                 ],
                 [
                     null,
                     "zeroX",
                     "zeroY",
-                    "zeroZ"
-                    
+                    "zeroZ",
+                    "probelaser"
                 ],
                 [
-                   "probe_z",
-                   "probe_zxy",
-                   "probelaser",
+                    null,
+                    null,
+                    null,
                     "machinePosition",
                     "workPosition"
                 ]
@@ -255,9 +286,10 @@
     },
     "buttons": {
         
-        "exitbcnc":{
-            "title": "exitbcnc",
-            "command": [["confirmScene",{"command":"exit","message":"Quitter bCNC ?"}]],
+        "exit":{
+            "title": "exit",
+            "command": ["confirmScene",{"command":"exit","message":"Quitter bCNC ?"}
+            ],
             "condition":"!cnc.running",
             "icon": "exit.png",
             "texte": "Quitter bCNC",            
@@ -267,7 +299,7 @@
         },
         "reboot": {
             "title": "reboot",
-            "command": [["confirmScene", { "command":"reboot", "message":"Redemarrer le systeme ?" }]
+            "command": ["confirmScene", { "command":"reboot", "message":"Redemarrer le systeme ?" }
             ],
             "icon": "reboot.png",
             "texte": "Redémarrer",
@@ -278,7 +310,10 @@
         "changeoutil": {
             "title": "changeoutil",
             "command": [
-                ["gcode","G53 X-434 Y-563 Z-2"]
+                "gcode",
+                [
+                    "G53 X-434 Y-563 Z-2"
+                ]
             ],
             "icon": "toolbox.png",
             "texte": "Changer outil",
@@ -422,7 +457,10 @@
         "goZeroXY": {
             "title": "goZeroXY",
             "command": [
-                ["gcode","G0 X0Y0"]
+                "gcode",
+                [
+                    "G0 X0Y0"
+                ]
             ],
             "icon": "arrow_0xy.png",
             "texte": "Aller au XY0",
@@ -431,7 +469,10 @@
         "goZeroXYZ": {
             "title": "goZeroXYZ",
             "command": [
-                ["gcode","G0 X0Y0","G0 Z0"]
+                "gcode",
+                [
+                    "G0 X0Y0","G0 Z0"
+                ]
             ],
             "icon": "arrow_0xyz.png",
             "texte": "Aller au XYZ0",
@@ -440,7 +481,10 @@
         "goZeroX": {
             "title": "goZeroX",
             "command": [
-                ["gcode","G0 X0"]
+                "gcode",
+                [
+                    "G0 X0"
+                ]
             ],
             "icon": "arrow_0.png",
             "texte": "Aller au X0",
@@ -449,7 +493,10 @@
         "goZeroY": {
             "title": "goZeroY",
             "command": [
-                ["gcode","G0 Y0"]
+                "gcode",
+                [
+                    "G0 Y0"
+                ]
             ],
             "icon": "arrow_0.png",
             "texte": "Aller au Y0",
@@ -458,7 +505,10 @@
         "goZeroZ": {
             "title": "goZeroZ",
             "command": [
-                ["gcode","G0 Z0"]
+                "gcode",
+                [
+                    "G0 Z0"
+                ]
             ],
             "icon": "arrow_0.png",
             "texte": "Aller au Z0",
@@ -470,58 +520,76 @@
            "title": "jogDistanceXY",
            "textSize": 1,
            "icon": "numpad.png",
-           "texte": "Step XY\n{{ cnc.jogDistanceXY }}",
+           "texte": "Distance XY\n{{ cnc.jogDistanceXY }}",
            "textColor":"#000",
            "bgColor": "#DDDD00",
             "command": [
-                ["enterStepXY","Step xy (mm)"]
+                "enterStepXY",
+                [
+                    "PAS xy (mm)"
+                ]
             ]
         },
          "jogDistanceZ": {
             "title": "jogDistanceZ",
            "textSize": 1,
            "icon": "numpad.png",
-            "texte": "Step Z\n{{ cnc.jogDistanceZ }}",
+            "texte": "Distance Z\n{{ cnc.jogDistanceZ }}",
             "textColor":"#000",
             "bgColor": "#DDDD00",
              "command": [
-                ["enterStepZ","Step z (mm)"]
+                "enterStepZ",
+                [
+                    "PAS z (mm)"
+                ]
             ]
         },        
         
         "jogDistanceDown": {
             "title": "jogDistanceDown",
             "command": [
-                ["jogDistance","-","XY"]
+                "jogDistance",
+                [
+                    "-","XY"
+                ]
             ],
-            "texte":"Step XY",
+            "texte":"Distance XY",
             "icon": "minus.png",
             "bgColor": 5
         },
         "jogDistanceUp": {
             "title": "jogDistanceUp",
             "command": [
-                ["jogDistance","+","XY"]
+                "jogDistance",
+                [
+                    "+","XY"
+                ]
             ],
-            "texte":"Step XY",
+            "texte":"Distance XY",
             "icon": "plus.png",
             "bgColor": 5
         },
          "jogDistanceDownZ": {
             "title": "jogDistanceDownZ",
             "command": [
-                ["jogDistance","-","Z"]
+                "jogDistance",
+                [
+                    "-","Z"
+                ]
             ],
-            "texte":"Step Z",
+            "texte":"Distance Z",
             "icon": "minus.png",
             "bgColor": 7
         },
         "jogDistanceUpZ": {
             "title": "jogDistanceUpZ",
             "command": [
-                ["jogDistance","+","Z"]
+                "jogDistance",
+                [
+                    "+","Z"
+                ]
             ],
-            "texte":"Step Z",
+            "texte":"Distance Z",
             "icon": "plus.png",
             "bgColor": 7
         },
@@ -544,7 +612,10 @@
         "jogSpeedDown": {
             "title": "jogSpeedDown",
             "command": [
-                ["jogSpeed","-"]
+                "jogSpeed",
+                [
+                    "-"
+                ]
             ],
             "icon": "minus.png",
             "bgColor": 7
@@ -552,7 +623,10 @@
         "jogSpeedUp": {
             "title": "jogSpeedUp",
             "command": [
-                ["jogSpeed","+"]
+                "jogSpeed",
+                [
+                    "+"
+                ]
             ],
             "icon": "plus.png",
             "bgColor": 7
@@ -560,7 +634,10 @@
         "jogTypeSmooth": {
             "title": "jogTypeSmooth",
             "command": [
-                ["swapScene","jog"]
+                "swapScene",
+                [
+                    "jog"
+                ]
             ],
             "icon": "bezier_curve_square.png",
             "bgColor": 7
@@ -568,7 +645,10 @@
         "jogTypeStep": {
             "title": "jogTypeStep",
             "command": [
-                ["swapScene","smoothJog"]
+                "swapScene",
+                [
+                    "smoothJog"
+                ]
             ],
             "icon": "steps.png",
             "bgColor": 7
@@ -576,7 +656,11 @@
         "jogXMinus": {
             "title": "jogXMinus",
             "command": [
-                ["jog","-","x"]
+                "jog",
+                [
+                    "-",
+                    "x"
+                ]
             ],
             "icon": "chevron_left_circle.png",
             "bgColor": 5,
@@ -585,7 +669,11 @@
         "jogXPlus": {
             "title": "jogXPlus",
             "command": [
-                ["jog","+","x"]
+                "jog",
+                [
+                    "+",
+                    "x"
+                ]
             ],
             "icon": "chevron_right_circle.png",
             "bgColor": 5,
@@ -594,7 +682,11 @@
         "jogYMinus": {
             "title": "jogYMinus",
             "command": [
-                ["jog","-","y"]
+                "jog",
+                [
+                    "-",
+                    "y"
+                ]
             ],
             "icon": "chevron_down_circle.png",
             "bgColor": 5,
@@ -603,7 +695,11 @@
         "jogYPlus": {
             "title": "jogYPlus",
             "command": [
-                ["jog","+","y"]
+                "jog",
+                [
+                    "+",
+                    "y"
+                ]
             ],
             "icon": "chevron_up_circle.png",
             "bgColor": 5,
@@ -613,7 +709,11 @@
         "jogZMinus": {
             "title": "jogZMinus",
             "command": [
-                ["jog","-","z"]
+                "jog",
+                [
+                    "-",
+                    "z"
+                ]
             ],
             "icon": "push_down.png",
             "bgColor": 7,
@@ -622,7 +722,11 @@
         "jogZPlus": {
             "title": "jogZPlus",
             "command": [
-                ["jog","+","z"]
+                "jog",
+                [
+                    "+",
+                    "z"
+                ]
             ],
             "icon": "pull_up.png",
             "bgColor": 7,
@@ -635,13 +739,16 @@
             ],
             "icon": "hand_right.png",
             "bgColor": 7,
-            "condition": "cnc.jog || cnc.running"
+            "condition": "jog"
         },      
         
         "loadGcode": {
             "title": "loadGcode",
             "command": [
-                ["navigate","gcodeList"]
+                "navigate",
+                [
+                    "gcodeList"
+                ]
             ],
             "icon": "fileopen.png",
             "texte": "Files",
@@ -688,7 +795,10 @@
         "positionXLabel": {
             "title": "positionXLabel",
             "command": [
-                ["enterPosition","x"]
+                "enterPosition",
+                [
+                    "x"
+                ]
             ],
             "icon": "arrow_x.png",
             "texte": "Saisir X",
@@ -697,7 +807,10 @@
         "positionYLabel": {
             "title": "positionYLabel",
             "command": [
-                ["enterPosition","y"]
+                "enterPosition",
+                [
+                    "y"
+                ]
             ],
             "icon": "arrow_y.png",
             "texte": "Saisir Y",
@@ -707,7 +820,10 @@
         "positionZLabel": {
             "title": "positionZLabel",
             "command": [
-                ["enterPosition","z"]
+                "enterPosition",
+                [
+                    "z"
+                ]
             ],
             "icon": "arrow_z.png",
             "texte": "Saisir Z",
@@ -722,50 +838,44 @@
             "icon": "bcnc.png"
             
         },
-        "gotomouse": {
-            "title": "gotomouse",
+        "preview": {
+            "title": "preview",
             "command": [
-                "showdep"
+                "backtoBCNC"
             ],
-            "texte": "go to \nmouse position",
+            "texte": "{{ gcode.filename }}",
             "textSize":1,
             "bgColor":5,
-            "icon": "arrow_grid_small.png"
-            
+            "icon": "preview.png",
+            "condition":"gcode.filename"
             
         },
         
         
         
-        "probe_zxy": {
-            "title": "probe_zxy",
-            "command": [
-                ["entertooldiameter","tool diameter"],
-                ["macro","zxyprobe",2.8,-6.6,-4]
-            ],
-            "icon": "zprobe.png",
-            "texte": "find XYZ origin\nTool:{{TOOLD}}",
-            "longclic" : true,
-            "bgColor": 8
-        },
         "probe_z": {
             "title": "probe_z",
             "command": [
-                ["macro","Zprobe",2.8]
+                "macro",
+                [                   
+                   "Zprobe",21.4
+                ]
             ],
             "icon": "zprobe.png",
-            "texte": "Z Probe",
+            "texte": "Hauteur Fraise",
             "longclic" : true,
             "bgColor": 8
         },
-        
         "probelaser": {
             "title": "probelaser",
             "command": [
-                ["macro","Zprobe",-6.5]
+                "macro",
+                [
+                    "Zprobe",11.5
+                ]
             ],
             "icon": "zprobelaser.png",
-            "texte": "Z Probe Laser",
+            "texte": "Hauteur du Laser",
             "longclic" : true,
             "bgColor": 8
         },
@@ -773,7 +883,10 @@
         "laseron": {
             "title": "laseron",
             "command": [
-                ["macro","laseron"]
+                "macro",
+                [
+                    "laseron"
+                ]
             ],
             "icon": "laseron.png",
             "texte": "Test du Laser",
@@ -783,7 +896,10 @@
         "laseroff": {
             "title": "laseroff",
             "command": [
-                ["macro","laseroff"]
+                "macro",
+                [
+                    "laseroff"
+                ]
             ],
             "icon": "laseroff.png",
             "texte": "Eteindre laser",
@@ -827,7 +943,11 @@
         "regionBottomCenter": {
             "title": "regionBottomCenter",
             "command": [
-                ["goto","50%","83%"]
+                "goto",
+                [
+                    "50%",
+                    "83%"
+                ]
             ],
             "icon": "arrow_down.png",
             "bgColor": 5
@@ -835,7 +955,11 @@
         "regionBottomLeft": {
             "title": "regionBottomLeft",
             "command": [
-                ["goto","83%","83%"]
+                "goto",
+                [
+                    "83%",
+                    "83%"
+                ]
             ],
             "icon": "arrow_down_left.png",
             "bgColor": 5
@@ -843,7 +967,11 @@
         "regionBottomRight": {
             "title": "regionBottomRight",
             "command": [
-                ["goto","16%","83%"]
+                "goto",
+                [
+                    "16%",
+                    "83%"
+                ]
             ],
             "icon": "arrow_down_right.png",
             "bgColor": 5
@@ -851,7 +979,11 @@
         "regionCenter": {
             "title": "regionCenter",
             "command": [
-                ["goto","50%","50%"]
+                "goto",
+                [
+                    "50%",
+                    "50%"
+                ]
             ],
             "icon": "circle_small.png",
             "bgColor": 5
@@ -859,7 +991,11 @@
         "regionCenterLeft": {
             "title": "regionCenterLeft",
             "command": [
-                ["goto","83%","50%"]
+                "goto",
+                [
+                    "83%",
+                    "50%"
+                ]
             ],
             "icon": "arrow_left.png",
             "bgColor": 5
@@ -867,7 +1003,11 @@
         "regionCenterRight": {
             "title": "regionCenterRight",
             "command": [
-                ["goto","16%","50%"]
+                "goto",
+                [
+                    "16%",
+                    "50%"
+                ]
             ],
             "icon": "arrow_right.png",
             "bgColor": 5
@@ -885,7 +1025,11 @@
         "regionTopCenter": {
             "title": "regionTopCenter",
             "command": [
-                ["goto","50%","16%"]
+                "goto",
+                [
+                    "50%",
+                    "16%"
+                ]
             ],
             "icon": "arrow_up.png",
             "bgColor": 5
@@ -893,7 +1037,11 @@
         "regionTopLeft": {
             "title": "regionTopLeft",
             "command": [
-                ["goto","83%","16%"]
+                "goto",
+                [
+                    "83%",
+                    "16%"
+                ]
             ],
             "icon": "arrow_up_left.png",
             "bgColor": 5
@@ -901,7 +1049,11 @@
         "regionTopRight": {
             "title": "regionTopRight",
             "command": [
-                ["goto","16%","16%"]
+                "goto",
+                [
+                    "16%",
+                    "16%"
+                ]
             ],
             "icon": "arrow_up_right.png",
             "bgColor": 5
@@ -918,7 +1070,11 @@
         "smoothJogXMinus": {
             "title": "smoothJogXMinus",
             "command": [
-                ["startSmoothJog","-","x"]
+                "startSmoothJog",
+                [
+                    "-",
+                    "x"
+                ]
             ],
             "icon": "chevron_left_circle.png",
             "bgColor": 5
@@ -926,7 +1082,11 @@
         "smoothJogXPlus": {
             "title": "smoothJogXPlus",
             "command": [
-                ["startSmoothJog","+","x"]
+                "startSmoothJog",
+                [
+                    "+",
+                    "x"
+                ]
             ],
             "icon": "chevron_right_circle.png",
             "bgColor": 5
@@ -934,7 +1094,11 @@
         "smoothJogYMinus": {
             "title": "smoothJogYMinus",
             "command": [
-                ["startSmoothJog","-","y"]
+                "startSmoothJog",
+                [
+                    "-",
+                    "y"
+                ]
             ],
             "icon": "chevron_down_circle.png",
             "bgColor": 5
@@ -942,7 +1106,11 @@
         "smoothJogYPlus": {
             "title": "smoothJogYPlus",
             "command": [
-                ["startSmoothJog","+","y"]
+                "startSmoothJog",
+                [
+                    "+",
+                    "y"
+                ]
             ],
             "icon": "chevron_up_circle.png",
             "bgColor": 5
@@ -950,7 +1118,11 @@
         "smoothJogZMinus": {
             "title": "smoothJogZMinus",
             "command": [
-                ["startSmoothJog","-","z"]
+                "startSmoothJog",
+                [
+                    "-",
+                    "z"
+                ]
             ],
             "icon": "push_down.png",
             "bgColor": 5
@@ -958,7 +1130,11 @@
         "smoothJogZPlus": {
             "title": "smoothJogZPlus",
             "command": [
-                ["startSmoothJog","+","z"]
+                "startSmoothJog",
+                [
+                    "+",
+                    "z"
+                ]
             ],
             "icon": "pull_up.png",
             "bgColor": 5
@@ -1031,7 +1207,10 @@
         "wcsXLabel": {
             "title": "wcsXLabel",
             "command": [
-                ["enterWorkPosition","x"]
+                "enterWorkPosition",
+                [
+                    "x"
+                ]
             ],
             "icon": "crosshair_x.png",
             "texte": "Saisir",
@@ -1040,7 +1219,10 @@
         "wcsYLabel": {
             "title": "wcsYLabel",
             "command": [
-                ["enterWorkPosition","y"]
+                "enterWorkPosition",
+                [
+                    "y"
+                ]
             ],
             "icon": "crosshair_y.png",
             "texte": "Saisir",
@@ -1049,7 +1231,10 @@
         "wcsZLabel": {
             "title": "wcsZLabel",
             "command": [
-                ["enterWorkPosition","z"]
+                "enterWorkPosition",
+                [
+                    "z"
+                ]
             ],
             "icon": "crosshair_z.png",
             "texte": "Saisir",
@@ -1068,7 +1253,10 @@
         "machineSize": {
             "title": "machineSize",
             "command": [
-                ["toggleUserFlag","showAbsolutePosition"]
+                "toggleUserFlag",
+                [
+                    "showAbsolutePosition"
+                ]
             ],
             "texte": "Taille\n{{cnc.MachineSize}}",
             "bgColor": 5,
@@ -1088,7 +1276,10 @@
         "zeroX": {
             "title": "zeroX",
             "command": [
-                ["setzero","X"]
+                "setzero",
+                [
+                    "X"
+                ]
             ],
             "icon": "crosshair_0.png",
             "texte": "Définir",
@@ -1097,7 +1288,10 @@
         "zeroY": {
             "title": "zeroY",
             "command": [
-                ["setzero","Y"]
+                "setzero",
+                [
+                    "Y"
+                ]
             ],
             "icon": "crosshair_0.png",
             "texte": "Définir",
@@ -1106,7 +1300,10 @@
         "zeroZ": {
             "title": "zeroZ",
             "command": [
-                ["setzero","Z"]
+                "setzero",
+                [
+                    "Z"
+                ]
             ],
             "icon": "crosshair_0.png",
             "texte": "Définir",
