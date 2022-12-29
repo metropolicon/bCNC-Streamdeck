@@ -469,6 +469,8 @@ class StreamdeckMain(Toplevel):
       self.serialPortsIndex=0
 
     if self.scenes.get("%s" %SceneName) or SceneName.lower()=="back":
+      if SceneName=="gcodeList" and not "gcodeList" in self.historyback:
+            self.filescene()
       if Force:
         self.historyback=['home']    
       if SceneName.lower()=="back":       
@@ -479,6 +481,7 @@ class StreamdeckMain(Toplevel):
           SceneName="home"
       else:
         if not Refresh:
+          
           if not SceneName=="gcodeList" or not "gcodeList" in self.historyback:
             self.historyback.append(SceneName)
       if self.scenes.get(SceneName).get("columnslines"):
@@ -613,8 +616,13 @@ class StreamdeckMain(Toplevel):
           else:
             command=['self.app.load(\"%s\")' %item.replace('\\','\\\\'),'self.parent.showScene("statusScene",True)',"self.parent.showcanvas()"]
           if os.path.isfile(item):  
-            texte="%s\n(%s)" %(os.path.basename(item),convert_size(os.path.getsize(item)))
+            ti_m = os.path.getmtime(item)
+            m_ti = time.ctime(ti_m)
+            t_obj = time.strptime(m_ti)
+            T_stamp = time.strftime("%d-%m-%Y\n%H:%M:%S", t_obj)
+            texte="%s\n(%s)\n%s" %(os.path.basename(item),convert_size(os.path.getsize(item)),T_stamp)
           else:
+            
             texte=os.path.basename(item)
           self.listfilebuttons[os.path.basename(item)]={"title": os.path.basename(item),"textSize": 1,"command":command,"bgColor":3 if os.path.isfile(item) else 4,"texte":texte}  
             
